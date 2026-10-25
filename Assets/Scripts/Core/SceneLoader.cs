@@ -156,8 +156,10 @@ namespace NeonRush
 
             if (GameManager.Instance != null)
             {
+                GameManager.Instance.ResetSession();
                 GameManager.Instance.ChangeState(GameState.Loading);
             }
+            ResultsScreenUI.ResetRewardSession();
 
             Debug.Log($"[SceneLoader] Asynchronous loading initiated: {sceneName}");
 

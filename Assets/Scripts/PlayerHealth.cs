@@ -8,10 +8,17 @@ public class PlayerHealth : MonoBehaviour
     public int maxHealth = 100;
     public int damageAmount = 25;
 
+    [Header("Invulnerability & Damage Cooldown")]
+    public float invulnerabilityDuration = 1.0f;
+    private float invulnerabilityTimer = 0f;
+    private bool isDead = false;
+
     void Start()
     {
         // Assignment Requirement: Initialize health in Start()
         health = 100;
+        isDead = false;
+        invulnerabilityTimer = 0f;
         Debug.Log("PlayerHealth initialized in Start(): health = " + health);
 
         if (GameUIManager.Instance != null)
@@ -20,9 +27,19 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        if (invulnerabilityTimer > 0f)
+        {
+            invulnerabilityTimer -= Time.deltaTime;
+        }
+    }
+
     // Assignment Requirement: Collision Handling with OnCollisionEnter()
     void OnCollisionEnter(Collision collision)
     {
+        if (isDead || invulnerabilityTimer > 0f) return;
+
         // Safe check for damaging objects
         bool isHazard = false;
         try
@@ -45,9 +62,24 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    public void RestoreHealth(int amount)
+    {
+        if (isDead || health <= 0) return;
+        health = Mathf.Clamp(health + amount, 0, maxHealth);
+        Debug.Log("Player health restored! Current health: " + health);
+
+        if (GameUIManager.Instance != null)
+        {
+            GameUIManager.Instance.UpdateHealth(health, maxHealth);
+        }
+    }
+
     public void TakeDamage(int amount)
     {
-        health -= amount;
+        if (isDead || invulnerabilityTimer > 0f) return;
+        invulnerabilityTimer = invulnerabilityDuration;
+
+        health = Mathf.Clamp(health - amount, 0, maxHealth);
         Debug.Log("Collision damage taken! Current health: " + health);
 
         if (GameUIManager.Instance != null)
@@ -65,6 +97,7 @@ public class PlayerHealth : MonoBehaviour
         if (health <= 0)
         {
             health = 0;
+            isDead = true;
             Debug.Log("Health depleted to zero. Destroying GameObject as required by assignment.");
 
             if (GameManager.Instance != null)
@@ -79,7 +112,7 @@ public class PlayerHealth : MonoBehaviour
                 }
             }
 
-            Destroy(gameObject);
+            Destroy(gameObject, 0.05f);
         }
     }
 }

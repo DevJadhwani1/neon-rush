@@ -82,10 +82,13 @@ public class TrackBuilder : MonoBehaviour
         // Start Gantry Overhead Lights
         CreateStartGantry(root, new Vector3(0f, 0f, -5f));
 
+        // CHECKPOINT 0: Start Gantry
+        CreateCheckpointGate(root, "Checkpoint_00", 0, false, new Vector3(0f, 0f, 0f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 0f), Quaternion.identity);
+
         // Straightaway to Fork
         CreateRoadSlab(root, "Sec1_Straight", new Vector3(0f, -0.5f, 20f), new Vector3(18f, 2f, 32f));
-        CreateGuardRail(root, "Rail_Sec1_L", new Vector3(-9f, 1.2f, 20f), new Vector3(0.6f, 2.4f, 32f));
-        CreateGuardRail(root, "Rail_Sec1_R", new Vector3(9f, 1.2f, 20f), new Vector3(0.6f, 2.4f, 32f));
+        CreateGuardRail(root, "Rail_Sec1_L", new Vector3(-9f, 1.5f, 20f), new Vector3(0.6f, 3.0f, 32f));
+        CreateGuardRail(root, "Rail_Sec1_R", new Vector3(9f, 1.5f, 20f), new Vector3(0.6f, 3.0f, 32f));
 
         CreateBoostPad(root, new Vector3(0f, 0.52f, 12f), 28f);
         CreateShard(root, new Vector3(0f, 1.5f, 5f));
@@ -96,12 +99,15 @@ public class TrackBuilder : MonoBehaviour
         CreateEnergyZone(root, new Vector3(-4.5f, 1.8f, 18f));
         CreateEnergyZone(root, new Vector3(6.5f, 1.8f, 48f));
 
+        // CHECKPOINT 1: Pre-Fork
+        CreateCheckpointGate(root, "Checkpoint_01", 1, false, new Vector3(0f, 0f, 35f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 35f), Quaternion.identity);
+
         // Split Road Fork (Z = 35 to 65): Left Lane (Underpass), Right Lane (Bypass)
         CreateRoadSlab(root, "Fork_Left_Lane", new Vector3(-6.5f, -0.5f, 50f), new Vector3(8f, 2f, 30f));
-        CreateGuardRail(root, "Rail_Fork_L_Outer", new Vector3(-10.5f, 1.2f, 50f), new Vector3(0.6f, 2.4f, 30f));
-        CreateGuardRail(root, "Rail_Fork_Divider", new Vector3(0f, 1.2f, 50f), new Vector3(0.8f, 2.4f, 30f));
+        CreateGuardRail(root, "Rail_Fork_L_Outer", new Vector3(-10.5f, 1.5f, 50f), new Vector3(0.6f, 3.0f, 30f));
+        CreateGuardRail(root, "Rail_Fork_Divider", new Vector3(0f, 1.5f, 50f), new Vector3(0.8f, 3.0f, 30f));
         CreateRoadSlab(root, "Fork_Right_Lane", new Vector3(6.5f, -0.5f, 50f), new Vector3(8f, 2f, 30f));
-        CreateGuardRail(root, "Rail_Fork_R_Outer", new Vector3(10.5f, 1.2f, 50f), new Vector3(0.6f, 2.4f, 30f));
+        CreateGuardRail(root, "Rail_Fork_R_Outer", new Vector3(10.5f, 1.5f, 50f), new Vector3(0.6f, 3.0f, 30f));
 
         // Left lane has rotating sweeper hazard; Right lane has Boost Pad
         CreateRotatingSweeper(root, "ForkSweeper", new Vector3(-6.5f, 0.5f, 50f), 7f, 75f);
@@ -109,6 +115,9 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(-6.5f, 1.5f, 42f));
         CreateShard(root, new Vector3(-6.5f, 1.5f, 58f));
         CreateShard(root, new Vector3(6.5f, 1.5f, 58f));
+
+        // CHECKPOINT 2: Fork Exit
+        CreateCheckpointGate(root, "Checkpoint_02", 2, false, new Vector3(0f, 0f, 65f), new Vector3(24f, 8f, 4f), new Vector3(0f, 0.5f, 65f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 2: DOUBLE HAIRPIN CHICANE & DRIFT CANYON (Z = 65 to 175)
@@ -118,10 +127,12 @@ public class TrackBuilder : MonoBehaviour
 
         // Turn 1 (Right Sweep): Curves out from X = 0 to X = 28m at Z = 100m
         CreateRoadSlab(root, "Turn1_Sweep1", new Vector3(5f, -0.5f, 75f), new Vector3(18f, 2f, 22f), 25f);
-        CreateGuardRail(root, "Rail_Turn1_Outer1", new Vector3(14f, 1.2f, 75f), new Vector3(0.6f, 2.5f, 23f), 25f);
+        CreateGuardRail(root, "Rail_Turn1_Inner1", new Vector3(-4f, 1.5f, 75f), new Vector3(0.6f, 3.0f, 23f), 25f);
+        CreateGuardRail(root, "Rail_Turn1_Outer1", new Vector3(14f, 1.5f, 75f), new Vector3(0.6f, 3.0f, 23f), 25f);
 
         CreateRoadSlab(root, "Turn1_Sweep2", new Vector3(16f, -0.5f, 92f), new Vector3(18f, 2f, 22f), 45f);
-        CreateGuardRail(root, "Rail_Turn1_Outer2", new Vector3(25.5f, 1.2f, 92f), new Vector3(0.6f, 2.5f, 23f), 45f);
+        CreateGuardRail(root, "Rail_Turn1_Inner2", new Vector3(6.5f, 1.5f, 92f), new Vector3(0.6f, 3.0f, 23f), 45f);
+        CreateGuardRail(root, "Rail_Turn1_Outer2", new Vector3(25.5f, 1.5f, 92f), new Vector3(0.6f, 3.0f, 23f), 45f);
 
         // Turn 1 Apex Cyber-Pillar & Sweeper
         CreateRotatingSweeper(root, "Apex1_Sweeper", new Vector3(10f, 0.5f, 95f), 9.5f, 60f);
@@ -134,29 +145,39 @@ public class TrackBuilder : MonoBehaviour
 
         // Drift straight along X = 28m
         CreateRoadSlab(root, "Chicane_Straight", new Vector3(26f, -0.5f, 115f), new Vector3(18f, 2f, 28f));
-        CreateGuardRail(root, "Rail_Chicane_L", new Vector3(17f, 1.2f, 115f), new Vector3(0.6f, 2.4f, 28f));
-        CreateGuardRail(root, "Rail_Chicane_R", new Vector3(35f, 1.2f, 115f), new Vector3(0.6f, 2.4f, 28f));
+        CreateGuardRail(root, "Rail_Chicane_L", new Vector3(17f, 1.5f, 115f), new Vector3(0.6f, 3.0f, 28f));
+        CreateGuardRail(root, "Rail_Chicane_R", new Vector3(35f, 1.5f, 115f), new Vector3(0.6f, 3.0f, 28f));
         CreateBoostPad(root, new Vector3(26f, 0.52f, 115f), 30f);
         CreateShard(root, new Vector3(26f, 1.5f, 115f));
+
+        // CHECKPOINT 3: Chicane Straight
+        CreateCheckpointGate(root, "Checkpoint_03", 3, false, new Vector3(26f, 0f, 115f), new Vector3(20f, 8f, 4f), new Vector3(26f, 0.5f, 115f), Quaternion.identity);
 
         // Turn 2 Warning Billboard (Turn Left!)
         CreateTurnChevronSign(root, new Vector3(32f, 1.5f, 126f), -45f, false);
 
         // Turn 2 (Left Switchback): Sweeps from X = 28 back to X = -12 at Z = 150
         CreateRoadSlab(root, "Turn2_Sweep1", new Vector3(16f, -0.5f, 138f), new Vector3(18f, 2f, 24f), -35f);
-        CreateGuardRail(root, "Rail_Turn2_Outer", new Vector3(26.5f, 1.2f, 138f), new Vector3(0.6f, 2.5f, 25f), -35f);
+        CreateGuardRail(root, "Rail_Turn2_Inner", new Vector3(5.5f, 1.5f, 138f), new Vector3(0.6f, 3.0f, 25f), -35f);
+        CreateGuardRail(root, "Rail_Turn2_Outer", new Vector3(26.5f, 1.5f, 138f), new Vector3(0.6f, 3.0f, 25f), -35f);
 
         // Laser Gate crossing Turn 2 exit
         CreateLaserGate(root, "ChicaneGate", new Vector3(14f, 0f, 142f), 18f);
 
         CreateRoadSlab(root, "Turn2_Sweep2", new Vector3(2f, -0.5f, 156f), new Vector3(18f, 2f, 22f), -20f);
+        CreateGuardRail(root, "Rail_Turn2_Inner2", new Vector3(-7.5f, 1.5f, 156f), new Vector3(0.6f, 3.0f, 23f), -20f);
+        CreateGuardRail(root, "Rail_Turn2_Outer2", new Vector3(11.5f, 1.5f, 156f), new Vector3(0.6f, 3.0f, 23f), -20f);
+
         CreateShard(root, new Vector3(6f, 1.5f, 150f));
         CreateShard(root, new Vector3(0f, 1.5f, 160f));
 
         // Return curve to center X = 0 at Z = 175
         CreateRoadSlab(root, "Chicane_Exit", new Vector3(0f, -0.5f, 172f), new Vector3(18f, 2f, 18f));
-        CreateGuardRail(root, "Rail_Exit_L", new Vector3(-9f, 1.2f, 172f), new Vector3(0.6f, 2.4f, 18f));
-        CreateGuardRail(root, "Rail_Exit_R", new Vector3(9f, 1.2f, 172f), new Vector3(0.6f, 2.4f, 18f));
+        CreateGuardRail(root, "Rail_Exit_L", new Vector3(-9f, 1.5f, 172f), new Vector3(0.6f, 3.0f, 18f));
+        CreateGuardRail(root, "Rail_Exit_R", new Vector3(9f, 1.5f, 172f), new Vector3(0.6f, 3.0f, 18f));
+
+        // CHECKPOINT 4: Chicane Exit
+        CreateCheckpointGate(root, "Checkpoint_04", 4, false, new Vector3(0f, 0f, 172f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 172f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 3: HIGH-ALTITUDE SKY SKYWAY & SUPERSONIC GAP JUMP (Z = 175 to 295)
@@ -164,14 +185,17 @@ public class TrackBuilder : MonoBehaviour
         // Incline launch ramp from Y = 0 to Y = 11m (Length 34m, angle ~18 deg)
         float rampAngle = -17.5f;
         CreateRoadSlab(root, "SkyInclineRamp", new Vector3(0f, 5.2f, 192f), new Vector3(16f, 2f, 36f), 0f, rampAngle);
-        CreateGuardRail(root, "Rail_Ramp_L", new Vector3(-8f, 6.7f, 192f), new Vector3(0.6f, 2.5f, 36f), 0f, rampAngle);
-        CreateGuardRail(root, "Rail_Ramp_R", new Vector3(8f, 6.7f, 192f), new Vector3(0.6f, 2.5f, 36f), 0f, rampAngle);
+        CreateGuardRail(root, "Rail_Ramp_L", new Vector3(-8f, 7.0f, 192f), new Vector3(0.6f, 3.0f, 36f), 0f, rampAngle);
+        CreateGuardRail(root, "Rail_Ramp_R", new Vector3(8f, 7.0f, 192f), new Vector3(0.6f, 3.0f, 36f), 0f, rampAngle);
 
         // High Sky Launch Platform at Y = 11m
         CreateRoadSlab(root, "SkyLaunchDeck", new Vector3(0f, 10.5f, 215f), new Vector3(16f, 2f, 16f));
-        CreateGuardRail(root, "Rail_Launch_L", new Vector3(-8f, 12.2f, 215f), new Vector3(0.6f, 2.4f, 16f));
-        CreateGuardRail(root, "Rail_Launch_R", new Vector3(8f, 12.2f, 215f), new Vector3(0.6f, 2.4f, 16f));
+        CreateGuardRail(root, "Rail_Launch_L", new Vector3(-8f, 12.5f, 215f), new Vector3(0.6f, 3.0f, 16f));
+        CreateGuardRail(root, "Rail_Launch_R", new Vector3(8f, 12.5f, 215f), new Vector3(0.6f, 3.0f, 16f));
         CreateBoostPad(root, new Vector3(0f, 11.52f, 216f), 32f);
+
+        // CHECKPOINT 5: Sky Launch Deck
+        CreateCheckpointGate(root, "Checkpoint_05", 5, false, new Vector3(0f, 10.5f, 215f), new Vector3(18f, 8f, 4f), new Vector3(0f, 11.5f, 215f), Quaternion.identity);
 
         // --- MEGA SKY GAP (Z = 223 to 265, Gap = 42m!) ---
         // Laser pit hazard underneath
@@ -185,10 +209,15 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(0f, 14.5f, 244f));
         CreateShard(root, new Vector3(0f, 13.8f, 254f));
 
-        // Elevated Landing Runway at Y = 11m
+        // Elevated Landing Runway at Y = 11m with entry catch funnels
         CreateRoadSlab(root, "SkyLandingDeck", new Vector3(0f, 10.5f, 280f), new Vector3(20f, 2f, 32f));
-        CreateGuardRail(root, "Rail_Land_L", new Vector3(-10f, 12.5f, 280f), new Vector3(0.6f, 3.0f, 32f));
-        CreateGuardRail(root, "Rail_Land_R", new Vector3(10f, 12.5f, 280f), new Vector3(0.6f, 3.0f, 32f));
+        CreateGuardRail(root, "Funnel_Land_L", new Vector3(-12.5f, 12.5f, 263f), new Vector3(0.6f, 3.2f, 8f), -22f);
+        CreateGuardRail(root, "Funnel_Land_R", new Vector3(12.5f, 12.5f, 263f), new Vector3(0.6f, 3.2f, 8f), 22f);
+        CreateGuardRail(root, "Rail_Land_L", new Vector3(-10f, 12.5f, 280f), new Vector3(0.6f, 3.2f, 32f));
+        CreateGuardRail(root, "Rail_Land_R", new Vector3(10f, 12.5f, 280f), new Vector3(0.6f, 3.2f, 32f));
+
+        // CHECKPOINT 6: Sky Landing Deck
+        CreateCheckpointGate(root, "Checkpoint_06", 6, false, new Vector3(0f, 10.5f, 280f), new Vector3(22f, 8f, 4f), new Vector3(0f, 11.5f, 280f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 4: DESCENDING CORKSCREW & POLICE CYBER-GAUNTLET (Z = 295 to 420)
@@ -196,16 +225,21 @@ public class TrackBuilder : MonoBehaviour
         // Descent Corkscrew Ramp: Y = 11m down to Y = 0.5m while sweeping to X = 12m
         float descentAngle = 16.5f;
         CreateRoadSlab(root, "CorkscrewDescent", new Vector3(6f, 5.5f, 314f), new Vector3(16f, 2f, 38f), 15f, descentAngle);
-        CreateGuardRail(root, "Rail_Desc_L", new Vector3(-2f, 7.0f, 314f), new Vector3(0.6f, 2.5f, 38f), 15f, descentAngle);
-        CreateGuardRail(root, "Rail_Desc_R", new Vector3(14f, 7.0f, 314f), new Vector3(0.6f, 2.5f, 38f), 15f, descentAngle);
+        CreateGuardRail(root, "Rail_Desc_L", new Vector3(-2f, 7.2f, 314f), new Vector3(0.6f, 3.0f, 38f), 15f, descentAngle);
+        CreateGuardRail(root, "Rail_Desc_R", new Vector3(14f, 7.2f, 314f), new Vector3(0.6f, 3.0f, 38f), 15f, descentAngle);
 
         CreateRoadSlab(root, "CorkscrewBottom", new Vector3(2f, -0.5f, 340f), new Vector3(16f, 2f, 20f), -12f);
+        CreateGuardRail(root, "Rail_Cork_L", new Vector3(-6.5f, 1.5f, 340f), new Vector3(0.6f, 3.0f, 20f), -12f);
+        CreateGuardRail(root, "Rail_Cork_R", new Vector3(10.5f, 1.5f, 340f), new Vector3(0.6f, 3.0f, 20f), -12f);
         CreateShard(root, new Vector3(4f, 1.5f, 335f));
+
+        // CHECKPOINT 7: Gauntlet Entry
+        CreateCheckpointGate(root, "Checkpoint_07", 7, false, new Vector3(0f, 0f, 350f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 350f), Quaternion.identity);
 
         // The Cyber-Gauntlet Straight (Z = 350 to 420, X = 0)
         CreateRoadSlab(root, "Gauntlet_Straight", new Vector3(0f, -0.5f, 385f), new Vector3(18f, 2f, 72f));
-        CreateGuardRail(root, "Rail_Gaunt_L", new Vector3(-9f, 1.2f, 385f), new Vector3(0.6f, 2.4f, 72f));
-        CreateGuardRail(root, "Rail_Gaunt_R", new Vector3(9f, 1.2f, 385f), new Vector3(0.6f, 2.4f, 72f));
+        CreateGuardRail(root, "Rail_Gaunt_L", new Vector3(-9f, 1.5f, 385f), new Vector3(0.6f, 3.0f, 72f));
+        CreateGuardRail(root, "Rail_Gaunt_R", new Vector3(9f, 1.5f, 385f), new Vector3(0.6f, 3.0f, 72f));
 
         // Gauntlet Hazard 1: Pulsing Laser Gate
         CreateLaserGate(root, "GauntletGate_01", new Vector3(0f, 0f, 360f), 18f);
@@ -223,23 +257,28 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(0f, 1.5f, 392f));
         CreateShard(root, new Vector3(4f, 1.5f, 412f));
 
+        // CHECKPOINT 8: Gauntlet Exit / Slalom
+        CreateCheckpointGate(root, "Checkpoint_08", 8, false, new Vector3(0f, 0f, 420f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 420f), Quaternion.identity);
+
         // =========================================================================
         // SECTOR 5: SLALOM S-CURVES, TRIPLE BOOST FINALE & COLOSSEUM ARCH (Z = 420 to 520)
         // =========================================================================
         // Slalom Left Curve
         CreateRoadSlab(root, "Slalom_Left", new Vector3(-6f, -0.5f, 435f), new Vector3(16f, 2f, 24f), -16f);
-        CreateGuardRail(root, "Rail_Slalom1_L", new Vector3(-14f, 1.2f, 435f), new Vector3(0.6f, 2.4f, 24f), -16f);
+        CreateGuardRail(root, "Rail_Slalom1_L", new Vector3(-14f, 1.5f, 435f), new Vector3(0.6f, 3.0f, 24f), -16f);
+        CreateGuardRail(root, "Rail_Slalom1_R", new Vector3(2f, 1.5f, 435f), new Vector3(0.6f, 3.0f, 24f), -16f);
         CreateShard(root, new Vector3(-6f, 1.5f, 435f));
 
         // Slalom Right Curve
         CreateRoadSlab(root, "Slalom_Right", new Vector3(0f, -0.5f, 455f), new Vector3(16f, 2f, 22f), 16f);
-        CreateGuardRail(root, "Rail_Slalom2_R", new Vector3(8f, 1.2f, 455f), new Vector3(0.6f, 2.4f, 22f), 16f);
+        CreateGuardRail(root, "Rail_Slalom2_L", new Vector3(-8f, 1.5f, 455f), new Vector3(0.6f, 3.0f, 22f), 16f);
+        CreateGuardRail(root, "Rail_Slalom2_R", new Vector3(8f, 1.5f, 455f), new Vector3(0.6f, 3.0f, 22f), 16f);
         CreateShard(root, new Vector3(0f, 1.5f, 455f));
 
         // Triple Boost Drag Runway (Z = 465 to 520, X = 0)
         CreateRoadSlab(root, "FinalRunway", new Vector3(0f, -0.5f, 495f), new Vector3(20f, 2f, 62f));
-        CreateGuardRail(root, "Rail_Run_L", new Vector3(-10f, 1.2f, 495f), new Vector3(0.6f, 2.5f, 62f));
-        CreateGuardRail(root, "Rail_Run_R", new Vector3(10f, 1.2f, 495f), new Vector3(0.6f, 2.5f, 62f));
+        CreateGuardRail(root, "Rail_Run_L", new Vector3(-10f, 1.5f, 495f), new Vector3(0.6f, 3.0f, 62f));
+        CreateGuardRail(root, "Rail_Run_R", new Vector3(10f, 1.5f, 495f), new Vector3(0.6f, 3.0f, 62f));
 
         // Triple Sequential Boost Pads: 25 m/s -> 30 m/s -> 35 m/s!
         CreateBoostPad(root, new Vector3(0f, 0.52f, 472f), 26f);
@@ -250,10 +289,16 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(3.5f, 1.5f, 490f));
         CreateShard(root, new Vector3(0f, 1.5f, 508f));
 
-        // Grand Colosseum Victory Finish Arch at Z = 515m
+        // Grand Colosseum Victory Finish Arch at Z = 515m (Checkpoint 9)
         CreateFinishArch(root, new Vector3(0f, 0f, 515f));
 
-        Debug.Log("Full 550m Grand Prix Circuit successfully generated with hairpins, sky jumps, speed rings, collectibles, and dynamic hazards!");
+        NeonRush.RaceManager rm = FindAnyObjectByType<NeonRush.RaceManager>();
+        if (rm != null)
+        {
+            rm.RefreshCheckpoints();
+        }
+
+        Debug.Log("Full 550m Grand Prix Circuit successfully generated with hairpins, checkpoints, sky jumps, speed rings, collectibles, and dynamic hazards!");
     }
 
     void CreateRoadSlab(Transform parent, string name, Vector3 pos, Vector3 size, float rotY = 0f, float rotX = 0f)
@@ -526,6 +571,37 @@ public class TrackBuilder : MonoBehaviour
         ts.turnRight = isRight;
     }
 
+    GameObject CreateCheckpointGate(Transform parent, string name, int index, bool isFinish, Vector3 pos, Vector3 triggerSize, Vector3 safeRespawnPos, Quaternion safeRespawnRot, float rotY = 0f)
+    {
+        GameObject cpObj = new GameObject(name);
+        cpObj.transform.SetParent(parent, false);
+        cpObj.transform.position = pos;
+        cpObj.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+
+        BoxCollider trigger = cpObj.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.center = new Vector3(0f, triggerSize.y * 0.5f, 0f);
+        trigger.size = triggerSize;
+
+        NeonRush.Checkpoint cp = cpObj.AddComponent<NeonRush.Checkpoint>();
+        cp.SetCheckpointData(index, isFinish, safeRespawnPos, safeRespawnRot);
+
+        float halfW = triggerSize.x * 0.5f;
+        CreateArchColumn(cpObj.transform, new Vector3(-halfW, triggerSize.y * 0.5f, 0f), triggerSize.y);
+        CreateArchColumn(cpObj.transform, new Vector3(halfW, triggerSize.y * 0.5f, 0f), triggerSize.y);
+
+        GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        beam.name = "GantryBeam";
+        beam.transform.SetParent(cpObj.transform, false);
+        beam.transform.localPosition = new Vector3(0f, triggerSize.y + 0.3f, 0f);
+        beam.transform.localScale = new Vector3(triggerSize.x + 1.6f, 0.6f, 0.8f);
+        SetMat(beam, isFinish ? magentaGlowMat : cyanGlowMat);
+        Collider bc = beam.GetComponent<Collider>();
+        if (bc != null) SafeDestroy(bc);
+
+        return cpObj;
+    }
+
     void CreateStartGantry(Transform parent, Vector3 pos)
     {
         GameObject gantry = new GameObject("StartGantry");
@@ -586,6 +662,9 @@ public class TrackBuilder : MonoBehaviour
         goalBox.center = new Vector3(0f, 5f, 0f);
         goalBox.size = new Vector3(20f, 10f, 4f);
         finishObj.AddComponent<GoalTrigger>();
+
+        NeonRush.Checkpoint cp = finishObj.AddComponent<NeonRush.Checkpoint>();
+        cp.SetCheckpointData(9, true, new Vector3(0f, 0.5f, 500f), Quaternion.identity);
 
         GameObject l1 = new GameObject("ArchLight_L");
         l1.transform.SetParent(finishObj.transform, false);

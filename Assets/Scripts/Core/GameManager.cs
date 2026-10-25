@@ -15,6 +15,7 @@ namespace NeonRush
         Countdown,
         Racing,
         Paused,
+        GameOver,
         Finish,
         Results
     }
@@ -80,6 +81,7 @@ namespace NeonRush
         {
             if (scene.name.Contains("MainMenu"))
             {
+                ResetSession();
                 // In main menu
                 if (currentState != GameState.Splash && currentState != GameState.Title)
                 {
@@ -88,7 +90,9 @@ namespace NeonRush
             }
             else
             {
-                // In race scene: ensure all race systems exist
+                // In race scene: ensure all race systems exist and reset state
+                ResetSession();
+                ChangeState(GameState.Countdown);
                 EnsureRaceComponents();
             }
         }
@@ -134,6 +138,7 @@ namespace NeonRush
             }
             else
             {
+                ResetSession();
                 EnsureRaceComponents();
             }
         }
@@ -146,8 +151,8 @@ namespace NeonRush
                 raceTime += Time.deltaTime;
             }
 
-            // Quick restart with R key during gameplay
-            if (currentState == GameState.Racing && GameInput.GetResetDown())
+            // Quick restart with R key during gameplay or post-race/game-over states
+            if ((currentState == GameState.Racing || currentState == GameState.GameOver || currentState == GameState.Finish || currentState == GameState.Results) && GameInput.GetResetDown())
             {
                 if (SceneLoader.Instance != null && !SceneLoader.Instance.IsLoading)
                 {
@@ -168,18 +173,28 @@ namespace NeonRush
             {
                 case GameState.Racing:
                     isGameActive = true;
-                    raceTime = 0f;
                     Time.timeScale = 1f;
                     break;
                     
                 case GameState.Paused:
                     Time.timeScale = 0f;
+                    Cursor.visible = true;
+                    Cursor.lockState = CursorLockMode.None;
+                    break;
+
+                case GameState.GameOver:
+                    isGameActive = false;
+                    Time.timeScale = 1f;
+                    Cursor.visible = true;
+                    Cursor.lockState = CursorLockMode.None;
                     break;
                     
                 case GameState.Finish:
                 case GameState.Results:
                     isGameActive = false;
                     Time.timeScale = 1f;
+                    Cursor.visible = true;
+                    Cursor.lockState = CursorLockMode.None;
                     break;
                     
                 default:
@@ -223,7 +238,7 @@ namespace NeonRush
 
         public void OnCourseCompleted()
         {
-            if (hasWon) return;
+            if (hasWon || currentState == GameState.GameOver || currentState == GameState.Finish || currentState == GameState.Results) return;
 
             hasWon = true;
             isGameActive = false;
@@ -253,8 +268,11 @@ namespace NeonRush
 
         public void OnPlayerDied()
         {
+            if (currentState == GameState.GameOver || currentState == GameState.Finish || currentState == GameState.Results) return;
+
             isGameActive = false;
-            Debug.Log("Player eliminated!");
+            ChangeState(GameState.GameOver);
+            Debug.Log("[GameManager] Player eliminated -> Game Over!");
 
             if (GameUIManager.Instance != null)
             {
@@ -264,8 +282,11 @@ namespace NeonRush
 
         public void OnVehicleDestroyed()
         {
+            if (currentState == GameState.GameOver || currentState == GameState.Finish || currentState == GameState.Results) return;
+
             isGameActive = false;
-            Debug.Log("Vehicle destroyed!");
+            ChangeState(GameState.GameOver);
+            Debug.Log("[GameManager] Vehicle destroyed -> Game Over!");
 
             if (GameUIManager.Instance != null)
             {
@@ -281,6 +302,7 @@ namespace NeonRush
             hasWon = false;
             shardsCollected = 0;
             totalShards = 0;
+            Time.timeScale = 1f;
         }
 
         void OnDestroy()

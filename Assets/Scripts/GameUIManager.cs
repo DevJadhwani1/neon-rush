@@ -67,6 +67,11 @@ public class GameUIManager : MonoBehaviour
         whiteTexture.Apply();
     }
 
+    void Start()
+    {
+        ShowGameHUD();
+    }
+
     void Update()
     {
         if (notificationTimer > 0f)
@@ -83,9 +88,19 @@ public class GameUIManager : MonoBehaviour
             hitFlashTimer -= Time.deltaTime;
         }
 
-        if ((showVictory || showGameOver) && Input.GetKeyDown(KeyCode.R))
+        if (showVictory || showGameOver)
         {
-            SceneLoader.LoadRace();
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                SceneLoader.LoadRace();
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                SceneLoader.LoadMainMenu();
+            }
         }
     }
 
@@ -160,6 +175,11 @@ public class GameUIManager : MonoBehaviour
 
         if (showVictory)
         {
+            var rs = FindAnyObjectByType<ResultsScreenUI>();
+            if (rs != null && rs.enabled)
+            {
+                return;
+            }
             DrawVictoryBanner();
             return;
         }
@@ -170,8 +190,11 @@ public class GameUIManager : MonoBehaviour
             return;
         }
 
-        // --- SIMPLIFIED HUD: Speed, Position, Lap, Time, Boost, Power-up, Minimap ---
+        // --- SIMPLIFIED HUD: Speed, Position, Lap, Time, Boost, Health ---
         DrawSimplifiedHUD();
+
+        // Interaction Prompt
+        DrawPrompt();
 
         // Notifications
         if (!string.IsNullOrEmpty(notificationText))
@@ -271,22 +294,44 @@ public class GameUIManager : MonoBehaviour
         int millis = Mathf.FloorToInt((raceTime * 100f) % 100f);
         GUI.Label(new Rect(timeCard.x + 10, timeCard.y + 16, timeCard.width - 25, 45), $"{minutes:00}:{seconds:00}.{millis:00}", hudTimeStyle);
 
-        // --- BOTTOM LEFT: Boost & Hover Charge Card ---
+        // --- BOTTOM LEFT: Hull / Health Integrity Card & Boost Card ---
         {
             float boostW = 240f;
-            float boostH = 68f;
+            float boostH = 64f;
+            float healthH = 58f;
             float boostX = margin;
             float boostY = Screen.height - boostH - margin;
+            float healthY = boostY - healthH - 8f;
 
+            // 1. Health Card
+            Rect healthCard = new Rect(boostX, healthY, boostW, healthH);
+            GUI.DrawTexture(healthCard, hudCardBgTex);
+
+            float healthPct = Mathf.Clamp01((float)currentHealth / Mathf.Max(1, maxHealth));
+            Color healthColor = (healthPct > 0.5f) ? new Color(0.2f, 1f, 0.45f) : (healthPct > 0.25f ? new Color(1f, 0.85f, 0.1f) : new Color(1f, 0.2f, 0.2f));
+
+            VehicleInteraction vi = FindAnyObjectByType<VehicleInteraction>();
+            bool inVehicle = (vi != null && vi.isInVehicle);
+            string healthTitle = inVehicle ? "HULL INTEGRITY" : "SUIT INTEGRITY";
+
+            GUI.Label(new Rect(boostX + 16, healthY + 5, 200, 18), $"{healthTitle}: {currentHealth}/{maxHealth}", smallStyle);
+
+            Rect healthBar = new Rect(boostX + 16, healthY + 26, boostW - 32, 14);
+            DrawBar(healthBar, healthPct, healthColor, new Color(0.12f, 0.14f, 0.2f, 0.9f));
+
+            string status = (healthPct > 0.5f) ? "SYSTEM: NOMINAL" : (healthPct > 0.25f ? "SYSTEM: WARNING" : "SYSTEM: CRITICAL FAILURE");
+            GUI.Label(new Rect(boostX + 16, healthY + 41, boostW - 32, 16), status, smallStyle);
+
+            // 2. Boost & Hover Charge Card
             Rect boostCard = new Rect(boostX, boostY, boostW, boostH);
             GUI.DrawTexture(boostCard, hudCardBgTex);
 
-            GUI.Label(new Rect(boostX + 16, boostY + 6, 200, 20), "ANTI-GRAV / BOOST", smallStyle);
+            GUI.Label(new Rect(boostX + 16, boostY + 5, 200, 18), "ANTI-GRAV / BOOST", smallStyle);
 
-            Rect boostBar = new Rect(boostX + 16, boostY + 28, boostW - 32, 14);
+            Rect boostBar = new Rect(boostX + 16, boostY + 26, boostW - 32, 14);
             DrawBar(boostBar, antiGravityRatio, new Color(1f, 0.15f, 0.85f), new Color(0.12f, 0.14f, 0.2f, 0.9f));
 
-            GUI.Label(new Rect(boostX + 16, boostY + 44, boostW - 32, 20), antiGravityStatus, smallStyle);
+            GUI.Label(new Rect(boostX + 16, boostY + 41, boostW - 32, 18), antiGravityStatus, smallStyle);
         }
     }
 
@@ -378,6 +423,42 @@ public class GameUIManager : MonoBehaviour
 
     void DrawVictoryBanner()
     {
+        float w = Mathf.Min(540f, Screen.width - 40f);
+        float h = 260f;
+        float x = (Screen.width - w) / 2f;
+        float y = (Screen.height - h) / 2f - 20f;
+
+        GUI.Box(new Rect(x, y, w, h), GUIContent.none, cardStyle);
+
+        GUILayout.BeginArea(new Rect(x + 20, y + 16, w - 40, h - 32));
+        bannerStyle.normal.textColor = new Color(0.2f, 1f, 0.4f);
+        GUILayout.Label("🏁 GRAND PRIX CHAMPION!", bannerStyle);
+        GUILayout.Space(4);
+
+        string starStr = (victoryStars == 3) ? "⭐⭐⭐ 3-STAR CYBER LEGEND!" : ((victoryStars == 2) ? "⭐⭐ 2-STAR RACER!" : "⭐ 1-STAR FINISHER!");
+        GUILayout.Label(starStr, headerStyle);
+
+        GUILayout.Space(4);
+        GUILayout.Label($"FINAL TIME: {raceTime:F2} seconds  |  FINAL SCORE: {score} PTS", labelStyle);
+        GUILayout.Label($"SHARDS COLLECTED: {shardsCollected} / {totalShards}", labelStyle);
+        GUILayout.Space(12);
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("RACE AGAIN [R]", GUILayout.Height(40)))
+        {
+            SceneLoader.LoadRace();
+        }
+        GUILayout.Space(12);
+        if (GUILayout.Button("MAIN MENU [ESC]", GUILayout.Height(40)))
+        {
+            SceneLoader.LoadMainMenu();
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.EndArea();
+    }
+
+    void DrawGameOverBanner()
+    {
         float w = Mathf.Min(520f, Screen.width - 40f);
         float h = 230f;
         float x = (Screen.width - w) / 2f;
@@ -385,37 +466,28 @@ public class GameUIManager : MonoBehaviour
 
         GUI.Box(new Rect(x, y, w, h), GUIContent.none, cardStyle);
 
-        GUILayout.BeginArea(new Rect(x + 20, y + 20, w - 40, h - 40));
-        bannerStyle.normal.textColor = new Color(0.2f, 1f, 0.4f);
-        GUILayout.Label("🏁 GRAND PRIX CHAMPION!", bannerStyle);
-        GUILayout.Space(6);
-
-        string starStr = (victoryStars == 3) ? "⭐⭐⭐ 3-STAR CYBER LEGEND!" : ((victoryStars == 2) ? "⭐⭐ 2-STAR RACER!" : "⭐ 1-STAR FINISHER!");
-        GUILayout.Label(starStr, headerStyle);
-
-        GUILayout.Space(6);
-        GUILayout.Label($"FINAL TIME: {raceTime:F2} seconds", labelStyle);
-        GUILayout.Label($"FINAL SCORE: {score} PTS", labelStyle);
-        GUILayout.Label($"SHARDS COLLECTED: {shardsCollected} / {totalShards}", labelStyle);
-        GUILayout.Space(10);
-        GUILayout.Label("PRESS [R] TO RACE AGAIN", promptStyle);
-        GUILayout.EndArea();
-    }
-
-    void DrawGameOverBanner()
-    {
-        float w = Mathf.Min(460f, Screen.width - 40f);
-        float h = 170f;
-        float x = (Screen.width - w) / 2f;
-        float y = (Screen.height - h) / 2f - 20f;
-
-        GUI.Box(new Rect(x, y, w, h), GUIContent.none, cardStyle);
-
-        GUILayout.BeginArea(new Rect(x + 20, y + 20, w - 40, h - 40));
+        GUILayout.BeginArea(new Rect(x + 20, y + 16, w - 40, h - 32));
         bannerStyle.normal.textColor = Color.red;
-        GUILayout.Label(gameOverReason, bannerStyle);
-        GUILayout.Space(10);
-        GUILayout.Label("PRESS [R] TO RESTART", promptStyle);
+        GUILayout.Label("CRITICAL SYSTEM FAILURE", bannerStyle);
+        GUILayout.Space(4);
+
+        Color oldHCol = headerStyle.normal.textColor;
+        headerStyle.normal.textColor = new Color(1f, 0.35f, 0.35f);
+        GUILayout.Label(gameOverReason, headerStyle);
+        headerStyle.normal.textColor = oldHCol;
+
+        GUILayout.Space(14);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("RESTART RACE [R]", GUILayout.Height(40)))
+        {
+            SceneLoader.LoadRace();
+        }
+        GUILayout.Space(12);
+        if (GUILayout.Button("MAIN MENU [ESC]", GUILayout.Height(40)))
+        {
+            SceneLoader.LoadMainMenu();
+        }
+        GUILayout.EndHorizontal();
         GUILayout.EndArea();
     }
 

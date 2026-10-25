@@ -45,6 +45,13 @@ public class VehicleController : MonoBehaviour
     [Header("Player Control State")]
     public bool isPlayerInVehicle = false;
 
+    [Header("Checkpoint Recovery")]
+    private Checkpoint lastValidCheckpoint = null;
+    private Vector3 lastSafePosition = new Vector3(0f, 1.5f, -10f);
+    private Quaternion lastSafeRotation = Quaternion.identity;
+    private bool isRecovering = false;
+    private float recoveryCooldown = 0f;
+
     // Runtime state
     private Rigidbody rb;
     private BoxCollider col;
@@ -161,10 +168,22 @@ public class VehicleController : MonoBehaviour
         UpdateDriftState();
         UpdateAntiGravityTimers();
 
-        // Fall Protection: NEVER falls into an infinite void!
-        if (transform.position.y < -3.5f)
+        if (recoveryCooldown > 0f)
         {
-            Respawn();
+            recoveryCooldown -= Time.deltaTime;
+        }
+
+        // Fall Protection & Out-of-Bounds Detection:
+        // Genuine fall below track or off high skyway deck
+        bool isOutOfBounds = transform.position.y < -3.5f;
+        if (transform.position.z >= 180f && transform.position.z <= 295f && transform.position.y < 4.0f)
+        {
+            isOutOfBounds = true;
+        }
+
+        if (isOutOfBounds && !isRecovering && recoveryCooldown <= 0f)
+        {
+            RecoverToCheckpoint();
         }
     }
 
@@ -495,39 +514,31 @@ public class VehicleController : MonoBehaviour
         }
     }
 
-    public void Respawn()
+    public void UpdateLastCheckpoint(Checkpoint cp)
     {
-        if (isDestroyed) return;
+        if (cp == null) return;
+        lastValidCheckpoint = cp;
+        lastSafePosition = cp.GetSafeRespawnPosition();
+        lastSafeRotation = cp.GetSafeRespawnRotation();
+    }
 
-        Vector3 respawnPos = new Vector3(0f, 1.5f, -10f);
+    public void RecoverToCheckpoint()
+    {
+        if (isDestroyed || isRecovering) return;
+        isRecovering = true;
+        recoveryCooldown = 1.0f;
 
-        if (transform.position.z >= 410f)
-        {
-            respawnPos = new Vector3(0f, 1.5f, 415f);
-        }
-        else if (transform.position.z >= 265f)
-        {
-            respawnPos = new Vector3(0f, 12.5f, 275f);
-        }
-        else if (transform.position.z >= 170f)
-        {
-            respawnPos = new Vector3(0f, 1.5f, 175f);
-        }
-        else if (transform.position.z >= 105f)
-        {
-            respawnPos = new Vector3(26f, 1.5f, 110f);
-        }
-        else if (transform.position.z >= 45f)
-        {
-            respawnPos = new Vector3(14f, 1.5f, 65f);
-        }
+        Vector3 spawnPos = lastSafePosition + Vector3.up * 0.35f;
+        Quaternion spawnRot = lastSafeRotation;
 
-        transform.position = respawnPos;
-        transform.rotation = Quaternion.identity;
+        transform.position = spawnPos;
+        transform.rotation = spawnRot;
 
+        if (rb == null) rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.linearVelocity = Vector3.zero;
+            // Reset old momentum and provide clean forward heading along the road
+            rb.linearVelocity = spawnRot * Vector3.forward * 4f;
             rb.angularVelocity = Vector3.zero;
         }
 
@@ -536,12 +547,26 @@ public class VehicleController : MonoBehaviour
             DeactivateAntiGravity();
         }
 
+        invulnerabilityTimer = 1.5f;
+
         if (GameUIManager.Instance != null)
         {
-            GameUIManager.Instance.ShowNotification("⚠️ FELL OFF TRACK — SAFELY RESPAWNED!", 2.5f);
+            GameUIManager.Instance.ShowNotification("⚠️ FELL OFF TRACK — SAFELY RECOVERED!", 2.5f);
         }
 
-        Debug.Log("Vehicle fell off track and respawned safely at " + respawnPos);
+        StartCoroutine(ResetRecoveryStateRoutine());
+        Debug.Log($"Vehicle safely recovered to checkpoint: {spawnPos}");
+    }
+
+    private System.Collections.IEnumerator ResetRecoveryStateRoutine()
+    {
+        yield return new WaitForSeconds(0.2f);
+        isRecovering = false;
+    }
+
+    public void Respawn()
+    {
+        RecoverToCheckpoint();
     }
 
     public void EnterVehicle()
@@ -588,12 +613,24 @@ public class VehicleController : MonoBehaviour
         }
     }
 
+    public void RestoreHealth(int amount)
+    {
+        if (isDestroyed || health <= 0) return;
+        health = Mathf.Clamp(health + amount, 0, maxHealth);
+        Debug.Log("Vehicle health restored! Current Health: " + health);
+
+        if (GameUIManager.Instance != null)
+        {
+            GameUIManager.Instance.UpdateHealth(health, maxHealth);
+        }
+    }
+
     public void TakeDamage(int amount)
     {
         if (isDestroyed || invulnerabilityTimer > 0f) return;
         invulnerabilityTimer = invulnerabilityDuration;
 
-        health -= amount;
+        health = Mathf.Clamp(health - amount, 0, maxHealth);
         Debug.Log("Vehicle took damage! Current Health: " + health);
 
         if (GameUIManager.Instance != null)
@@ -614,7 +651,7 @@ public class VehicleController : MonoBehaviour
         }
         else if (rb != null)
         {
-            rb.AddForce(-transform.forward * 14f + Vector3.up * 5f, ForceMode.Impulse);
+            rb.AddForce(-transform.forward * 6f + Vector3.up * 0.8f, ForceMode.Impulse);
         }
     }
 

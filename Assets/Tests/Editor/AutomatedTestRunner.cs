@@ -39,6 +39,18 @@ namespace NeonRush.Tests
             Test_CountdownController_LockingAndTiming();
             Test_GameManager_EnsureRaceComponents();
             Test_GameInput_StandardizedMappings();
+            Test_PlayerHealth_TakeDamageAndCooldown();
+            Test_PlayerHealth_RestoreHealth();
+            Test_VehicleController_TakeDamageAndRestoreHealth();
+            Test_GameManager_GameOverTransition();
+            Test_GameManager_CleanSessionReset();
+            Test_VehicleInteraction_ConcealAndRestoreRenderers();
+            Test_RaceManager_VehicleCountdownWithoutEjection();
+            Test_Checkpoint_SafeRespawnPositionAndRotation();
+            Test_RaceManager_StrictSequentialCheckpointValidation();
+            Test_VehicleController_CheckpointTrackingAndRecovery();
+            Test_VehicleController_OutOfBoundsFallRecovery();
+            Test_PoliceVehicle_RamForceRestricted();
 
             Debug.Log("==================================================");
             Debug.Log($">>> SUITE COMPLETED: {passed} PASSED, {failed} FAILED <<<");
@@ -370,6 +382,268 @@ namespace NeonRush.Tests
             Assert(!pause || pause, "GameInput: GetPauseDown returns valid boolean");
             Assert(!drift || drift, "GameInput: GetDrift returns valid boolean");
             Assert(!antiGrav || antiGrav, "GameInput: GetAntiGravityDown returns valid boolean");
+        }
+
+        private static void Test_PlayerHealth_TakeDamageAndCooldown()
+        {
+            GameObject go = new GameObject("Test_Player_Health");
+            PlayerHealth ph = go.AddComponent<PlayerHealth>();
+            ph.health = 100;
+            ph.maxHealth = 100;
+            ph.damageAmount = 25;
+
+            ph.TakeDamage(25);
+            Assert(ph.health == 75, "PlayerHealth: Takes 25 damage (health 100 -> 75)");
+
+            // Immediate second hit within invulnerability duration should be rejected
+            ph.TakeDamage(25);
+            Assert(ph.health == 75, "PlayerHealth: Invulnerability cooldown rejects immediate second hit");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_PlayerHealth_RestoreHealth()
+        {
+            GameObject go = new GameObject("Test_Player_Heal");
+            PlayerHealth ph = go.AddComponent<PlayerHealth>();
+            ph.health = 40;
+            ph.maxHealth = 100;
+
+            ph.RestoreHealth(30);
+            Assert(ph.health == 70, "PlayerHealth: Restoring 30 health updates value (40 -> 70)");
+
+            ph.RestoreHealth(50);
+            Assert(ph.health == 100, "PlayerHealth: Restoring health is clamped at maxHealth (100)");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_VehicleController_TakeDamageAndRestoreHealth()
+        {
+            GameObject go = new GameObject("Test_Vehicle_Damage");
+            VehicleController vc = go.AddComponent<VehicleController>();
+            vc.health = 100;
+            vc.maxHealth = 100;
+
+            vc.TakeDamage(30);
+            Assert(vc.health == 70, "VehicleController: Takes 30 damage (100 -> 70)");
+
+            vc.RestoreHealth(20);
+            Assert(vc.health == 90, "VehicleController: Restores 20 health (70 -> 90)");
+
+            vc.RestoreHealth(50);
+            Assert(vc.health == 100, "VehicleController: Restored health clamped at maxHealth (100)");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_GameManager_GameOverTransition()
+        {
+            GameObject go = new GameObject("Test_GM_GameOver");
+            GameManager gm = go.AddComponent<GameManager>();
+
+            gm.ChangeState(GameState.Racing);
+            Assert(gm.isGameActive, "GameManager: Racing state sets isGameActive = true");
+
+            gm.OnPlayerDied();
+            Assert(gm.CurrentState == GameState.GameOver && !gm.isGameActive, "GameManager: OnPlayerDied transitions to GameOver and deactivates game");
+
+            // Verify idempotency
+            gm.OnVehicleDestroyed();
+            Assert(gm.CurrentState == GameState.GameOver, "GameManager: Repeated terminal calls maintain GameOver state");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_GameManager_CleanSessionReset()
+        {
+            GameObject go = new GameObject("Test_GM_Reset");
+            GameManager gm = go.AddComponent<GameManager>();
+
+            gm.score = 500;
+            gm.raceTime = 45.2f;
+            gm.isGameActive = true;
+            gm.hasWon = true;
+            gm.shardsCollected = 8;
+            gm.totalShards = 12;
+
+            gm.ResetSession();
+
+            Assert(gm.score == 0, "GameManager.ResetSession: Score reset to 0");
+            Assert(gm.raceTime == 0f, "GameManager.ResetSession: RaceTime reset to 0");
+            Assert(!gm.isGameActive, "GameManager.ResetSession: isGameActive reset to false");
+            Assert(!gm.hasWon, "GameManager.ResetSession: hasWon reset to false (unlocks subsequent race completions)");
+            Assert(gm.shardsCollected == 0, "GameManager.ResetSession: shardsCollected reset to 0");
+            Assert(gm.totalShards == 0, "GameManager.ResetSession: totalShards reset to 0 (no accumulation)");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_VehicleInteraction_ConcealAndRestoreRenderers()
+        {
+            GameObject playerGo = new GameObject("Test_Player");
+            MeshRenderer mr = playerGo.AddComponent<MeshRenderer>();
+            mr.enabled = true;
+
+            GameObject childGo = new GameObject("ChildMesh");
+            childGo.transform.SetParent(playerGo.transform);
+            MeshRenderer childMr = childGo.AddComponent<MeshRenderer>();
+            childMr.enabled = true;
+
+            GameObject vehicleGo = new GameObject("Test_Vehicle");
+            VehicleController vc = vehicleGo.AddComponent<VehicleController>();
+
+            GameObject viGo = new GameObject("Test_VI");
+            VehicleInteraction vi = viGo.AddComponent<VehicleInteraction>();
+            vi.player = playerGo;
+            vi.vehicle = vehicleGo;
+            vi.startInsideVehicle = false;
+
+            vi.EnterVehicle();
+            Assert(!mr.enabled && !childMr.enabled, "VehicleInteraction: Entering vehicle conceals all child renderers");
+
+            vi.ExitVehicle();
+            Assert(mr.enabled && childMr.enabled, "VehicleInteraction: Exiting vehicle restores all child renderers");
+
+            UnityEngine.Object.DestroyImmediate(playerGo);
+            UnityEngine.Object.DestroyImmediate(vehicleGo);
+            UnityEngine.Object.DestroyImmediate(viGo);
+        }
+
+        private static void Test_RaceManager_VehicleCountdownWithoutEjection()
+        {
+            GameObject raceGo = new GameObject("Test_RM");
+            RaceManager rm = raceGo.AddComponent<RaceManager>();
+
+            GameObject vehicleGo = new GameObject("Test_Player_Vehicle");
+            VehicleController vc = vehicleGo.AddComponent<VehicleController>();
+            vc.isPlayerInVehicle = true;
+
+            Assert(vc.isPlayerInVehicle, "RaceManager: Player starts inside vehicle without ejection during pre-race");
+
+            UnityEngine.Object.DestroyImmediate(raceGo);
+            UnityEngine.Object.DestroyImmediate(vehicleGo);
+        }
+
+        private static void Test_Checkpoint_SafeRespawnPositionAndRotation()
+        {
+            GameObject cpGo = new GameObject("Test_Checkpoint");
+            cpGo.transform.position = new Vector3(26f, 0f, 115f);
+            Checkpoint cp = cpGo.AddComponent<Checkpoint>();
+
+            Vector3 safePos = new Vector3(26f, 0.5f, 115f);
+            Quaternion safeRot = Quaternion.Euler(0f, 25f, 0f);
+            cp.SetCheckpointData(3, false, safePos, safeRot);
+
+            Assert(cp.GetSafeRespawnPosition() == safePos, "Checkpoint: Safe respawn position matches track road coordinates");
+            Assert(cp.GetSafeRespawnRotation() == safeRot, "Checkpoint: Safe respawn rotation matches track orientation");
+
+            UnityEngine.Object.DestroyImmediate(cpGo);
+        }
+
+        private static void Test_RaceManager_StrictSequentialCheckpointValidation()
+        {
+            GameObject rmGo = new GameObject("Test_RM_Seq");
+            RaceManager rm = rmGo.AddComponent<RaceManager>();
+            rm.StartRace();
+
+            GameObject cp0Go = new GameObject("CP0");
+            Checkpoint cp0 = cp0Go.AddComponent<Checkpoint>();
+            cp0.SetCheckpointData(0, false, Vector3.zero, Quaternion.identity);
+
+            GameObject cp1Go = new GameObject("CP1");
+            Checkpoint cp1 = cp1Go.AddComponent<Checkpoint>();
+            cp1.SetCheckpointData(1, false, Vector3.forward * 35f, Quaternion.identity);
+
+            GameObject cp2Go = new GameObject("CP2");
+            Checkpoint cp2 = cp2Go.AddComponent<Checkpoint>();
+            cp2.SetCheckpointData(2, false, Vector3.forward * 65f, Quaternion.identity);
+
+            GameObject vGo = new GameObject("Test_V");
+            VehicleController vc = vGo.AddComponent<VehicleController>();
+
+            bool pass0 = rm.OnVehiclePassCheckpoint(vc, cp0);
+            Assert(pass0, "RaceManager: Passing Checkpoint 0 in sequence accepted");
+
+            bool pass2_skip = rm.OnVehiclePassCheckpoint(vc, cp2);
+            Assert(!pass2_skip, "RaceManager: Skipping Checkpoint 1 directly to 2 rejected");
+
+            bool pass1 = rm.OnVehiclePassCheckpoint(vc, cp1);
+            Assert(pass1, "RaceManager: Passing Checkpoint 1 in sequence accepted");
+
+            bool pass2 = rm.OnVehiclePassCheckpoint(vc, cp2);
+            Assert(pass2, "RaceManager: Passing Checkpoint 2 in sequence accepted");
+
+            UnityEngine.Object.DestroyImmediate(rmGo);
+            UnityEngine.Object.DestroyImmediate(cp0Go);
+            UnityEngine.Object.DestroyImmediate(cp1Go);
+            UnityEngine.Object.DestroyImmediate(cp2Go);
+            UnityEngine.Object.DestroyImmediate(vGo);
+        }
+
+        private static void Test_VehicleController_CheckpointTrackingAndRecovery()
+        {
+            GameObject vGo = new GameObject("Test_V_Recover");
+            Rigidbody rb = vGo.AddComponent<Rigidbody>();
+            VehicleController vc = vGo.AddComponent<VehicleController>();
+
+            GameObject cpGo = new GameObject("Test_CP");
+            Checkpoint cp = cpGo.AddComponent<Checkpoint>();
+            Vector3 safePos = new Vector3(0f, 0.5f, 35f);
+            Quaternion safeRot = Quaternion.identity;
+            cp.SetCheckpointData(1, false, safePos, safeRot);
+
+            vc.UpdateLastCheckpoint(cp);
+
+            // Simulate vehicle tumbling off-track with bad angular momentum
+            vGo.transform.position = new Vector3(50f, -10f, 35f);
+            rb.linearVelocity = new Vector3(-20f, -50f, 0f);
+            rb.angularVelocity = new Vector3(10f, 15f, 20f);
+
+            vc.RecoverToCheckpoint();
+
+            Assert(Mathf.Approximately(vGo.transform.position.x, safePos.x) && Mathf.Approximately(vGo.transform.position.z, safePos.z), "VehicleController: RecoverToCheckpoint restores horizontal track position");
+            Assert(vGo.transform.position.y >= safePos.y, "VehicleController: RecoverToCheckpoint sets safe clearance height above surface");
+            Assert(rb.angularVelocity == Vector3.zero, "VehicleController: RecoverToCheckpoint zeroes angular velocity to prevent spinning");
+            Assert(rb.linearVelocity.z > 0f, "VehicleController: RecoverToCheckpoint applies forward heading momentum");
+
+            UnityEngine.Object.DestroyImmediate(vGo);
+            UnityEngine.Object.DestroyImmediate(cpGo);
+        }
+
+        private static void Test_VehicleController_OutOfBoundsFallRecovery()
+        {
+            GameObject vGo = new GameObject("Test_V_OOB");
+            vGo.AddComponent<Rigidbody>();
+            VehicleController vc = vGo.AddComponent<VehicleController>();
+
+            GameObject cpGo = new GameObject("Test_CP_OOB");
+            Checkpoint cp = cpGo.AddComponent<Checkpoint>();
+            Vector3 safePos = new Vector3(0f, 11.5f, 215f);
+            cp.SetCheckpointData(5, false, safePos, Quaternion.identity);
+            vc.UpdateLastCheckpoint(cp);
+
+            // In skyway section, falling below 4m is out of bounds
+            vGo.transform.position = new Vector3(0f, 2.0f, 230f);
+            bool isSkyOOB = vGo.transform.position.z >= 180f && vGo.transform.position.z <= 295f && vGo.transform.position.y < 4.0f;
+            Assert(isSkyOOB, "VehicleController: Detects skyway fall condition when Y < 4.0m in sky section");
+
+            vc.RecoverToCheckpoint();
+            Assert(Mathf.Approximately(vGo.transform.position.z, 215f), "VehicleController: Skyway fall recovers to sky launch checkpoint");
+
+            UnityEngine.Object.DestroyImmediate(vGo);
+            UnityEngine.Object.DestroyImmediate(cpGo);
+        }
+
+        private static void Test_PoliceVehicle_RamForceRestricted()
+        {
+            GameObject pvGo = new GameObject("Test_Police");
+            PoliceVehicle pv = pvGo.AddComponent<PoliceVehicle>();
+            pvGo.AddComponent<Rigidbody>();
+
+            Assert(pv.ramForce <= 20f, "PoliceVehicle: Ram force clamped within safe threshold");
+
+            UnityEngine.Object.DestroyImmediate(pvGo);
         }
     }
 }

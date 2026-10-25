@@ -22,6 +22,7 @@ public class VehicleInteraction : MonoBehaviour
     private CapsuleCollider playerCollider;
     private MeshRenderer playerRenderer;
     private Rigidbody playerRb;
+    private System.Collections.Generic.Dictionary<Renderer, bool> playerRendererStates = new System.Collections.Generic.Dictionary<Renderer, bool>();
 
     void Awake()
     {
@@ -235,30 +236,61 @@ public class VehicleInteraction : MonoBehaviour
         if (playerController != null) playerController.enabled = false;
         if (playerCollider != null) playerCollider.enabled = false;
 
-        if (playerRb != null)
+        if (player != null)
         {
-            playerRb.linearVelocity = Vector3.zero;
-            playerRb.angularVelocity = Vector3.zero;
-            playerRb.useGravity = false;
-            playerRb.isKinematic = true;
-        }
+            // Disable all colliders on player hierarchy to prevent physics interference with vehicle
+            Collider[] allPlayerCols = player.GetComponentsInChildren<Collider>(true);
+            foreach (var c in allPlayerCols)
+            {
+                c.enabled = false;
+            }
 
-        if (driverSeat != null)
-        {
-            player.transform.position = driverSeat.position;
-            player.transform.SetParent(driverSeat);
-        }
-        else if (vehicle != null)
-        {
-            player.transform.position = vehicle.transform.position;
-            player.transform.SetParent(vehicle.transform);
-        }
+            if (playerRb != null)
+            {
+                playerRb.linearVelocity = Vector3.zero;
+                playerRb.angularVelocity = Vector3.zero;
+                playerRb.useGravity = false;
+                playerRb.detectCollisions = false;
+                playerRb.isKinematic = true;
+            }
 
-        if (playerRenderer != null) playerRenderer.enabled = false;
+            if (driverSeat != null)
+            {
+                player.transform.SetParent(driverSeat, false);
+                player.transform.localPosition = Vector3.zero;
+                player.transform.localRotation = Quaternion.identity;
+            }
+            else if (vehicle != null)
+            {
+                player.transform.SetParent(vehicle.transform, false);
+                player.transform.localPosition = new Vector3(0f, 0.5f, 0.1f);
+                player.transform.localRotation = Quaternion.identity;
+            }
+
+            // Hide ALL player renderers (including child meshes, jetpack, visor, etc.)
+            Renderer[] allRenderers = player.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in allRenderers)
+            {
+                if (r != null)
+                {
+                    if (!playerRendererStates.ContainsKey(r))
+                    {
+                        playerRendererStates[r] = r.enabled;
+                    }
+                    r.enabled = false;
+                }
+            }
+        }
 
         if (vehicleController != null)
         {
             vehicleController.EnterVehicle();
+
+            // Update HUD to show vehicle health
+            if (GameUIManager.Instance != null)
+            {
+                GameUIManager.Instance.UpdateHealth(vehicleController.health, vehicleController.maxHealth);
+            }
         }
 
         // Camera Switch: Vehicle Camera becomes primary MainCamera
@@ -282,7 +314,7 @@ public class VehicleInteraction : MonoBehaviour
             }
         }
 
-        Debug.Log("Entered vehicle successfully. Switched to Vehicle Camera.");
+        Debug.Log("Entered vehicle successfully. Switched to Vehicle Camera and concealed all character renderers.");
     }
 
     public void ExitVehicle()
@@ -298,13 +330,33 @@ public class VehicleInteraction : MonoBehaviour
         {
             player.transform.SetParent(null);
 
-            if (exitPoint != null)
+            Vector3 targetExit = (exitPoint != null) ? exitPoint.position : (vehicle != null ? vehicle.transform.position + vehicle.transform.TransformDirection(Vector3.left * 2.4f) : player.transform.position);
+
+            // Ground alignment raycast to prevent falling through floor
+            RaycastHit hit;
+            if (Physics.Raycast(targetExit + Vector3.up * 2f, Vector3.down, out hit, 6f, ~0, QueryTriggerInteraction.Ignore))
             {
-                player.transform.position = exitPoint.position;
+                targetExit.y = hit.point.y + 1f;
             }
-            else if (vehicle != null)
+
+            player.transform.position = targetExit;
+            if (vehicle != null) player.transform.rotation = Quaternion.Euler(0f, vehicle.transform.eulerAngles.y, 0f);
+
+            // Restore all player renderers to their original states
+            foreach (var kvp in playerRendererStates)
             {
-                player.transform.position = vehicle.transform.position + Vector3.left * 2.4f;
+                if (kvp.Key != null)
+                {
+                    kvp.Key.enabled = kvp.Value;
+                }
+            }
+            playerRendererStates.Clear();
+
+            // Re-enable player colliders and physics
+            Collider[] allPlayerCols = player.GetComponentsInChildren<Collider>(true);
+            foreach (var c in allPlayerCols)
+            {
+                c.enabled = true;
             }
 
             if (playerRb != null)
@@ -312,12 +364,20 @@ public class VehicleInteraction : MonoBehaviour
                 playerRb.linearVelocity = Vector3.zero;
                 playerRb.angularVelocity = Vector3.zero;
                 playerRb.isKinematic = false;
+                playerRb.detectCollisions = true;
                 playerRb.useGravity = true;
             }
 
-            if (playerRenderer != null) playerRenderer.enabled = true;
             if (playerCollider != null) playerCollider.enabled = true;
             if (playerController != null) playerController.enabled = true;
+
+            // Update HUD to show player suit health
+            if (GameUIManager.Instance != null)
+            {
+                PlayerHealth ph = player.GetComponent<PlayerHealth>();
+                if (ph != null) GameUIManager.Instance.UpdateHealth(ph.health, ph.maxHealth);
+                else if (playerController != null) GameUIManager.Instance.UpdateHealth(playerController.health, playerController.maxHealth);
+            }
         }
 
         // Camera Switch: Player Camera becomes primary MainCamera
@@ -341,6 +401,6 @@ public class VehicleInteraction : MonoBehaviour
             }
         }
 
-        Debug.Log("Exited vehicle successfully. Switched to Player Camera.");
+        Debug.Log("Exited vehicle successfully. Restored character renderers, physics, and switched to Player Camera.");
     }
 }

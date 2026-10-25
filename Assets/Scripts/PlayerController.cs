@@ -130,15 +130,46 @@ public class PlayerController : MonoBehaviour
     // Assignment Requirement: Collision Handling with OnCollisionEnter()
     void OnCollisionEnter(Collision collision)
     {
+        // If PlayerHealth component is attached to this GameObject, PlayerHealth is the authoritative handler
+        if (GetComponent<PlayerHealth>() != null) return;
+
         if (collision.gameObject.CompareTag("Hazard") || collision.gameObject.CompareTag("Enemy") || collision.gameObject.name.Contains("Hazard") || collision.gameObject.name.Contains("Police") || collision.gameObject.name.Contains("Enemy"))
         {
             TakeDamage(damageAmount);
         }
     }
 
+    public void RestoreHealth(int amount)
+    {
+        PlayerHealth ph = GetComponent<PlayerHealth>();
+        if (ph != null)
+        {
+            ph.RestoreHealth(amount);
+            health = ph.health;
+            return;
+        }
+
+        if (health <= 0) return;
+        health = Mathf.Clamp(health + amount, 0, maxHealth);
+        Debug.Log("Player health restored! Current health: " + health);
+
+        if (GameUIManager.Instance != null)
+        {
+            GameUIManager.Instance.UpdateHealth(health, maxHealth);
+        }
+    }
+
     public void TakeDamage(int amount)
     {
-        health -= amount;
+        PlayerHealth ph = GetComponent<PlayerHealth>();
+        if (ph != null)
+        {
+            ph.TakeDamage(amount);
+            health = ph.health;
+            return;
+        }
+
+        health = Mathf.Clamp(health - amount, 0, maxHealth);
         Debug.Log("Player took damage! Current Health: " + health);
 
         if (GameUIManager.Instance != null)
@@ -163,7 +194,7 @@ public class PlayerController : MonoBehaviour
                 GameManager.Instance.OnPlayerDied();
             }
 
-            Destroy(gameObject);
+            Destroy(gameObject, 0.05f);
         }
     }
 }

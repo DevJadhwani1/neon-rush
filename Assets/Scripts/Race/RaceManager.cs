@@ -122,7 +122,12 @@ namespace NeonRush
             // Freeze vehicles during countdown
             foreach (VehicleController vehicle in vehicleRacers)
             {
-                vehicle.isPlayerInVehicle = false;
+                Rigidbody rb = vehicle.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
             }
 
             Debug.Log($"Race countdown started: {countdownTime}s");
@@ -142,11 +147,6 @@ namespace NeonRush
         {
             currentState = RaceState.Racing;
             raceTime = 0f;
-
-            foreach (VehicleController vehicle in vehicleRacers)
-            {
-                vehicle.isPlayerInVehicle = true;
-            }
 
             Debug.Log("Race started! GO GO GO!");
 
@@ -202,26 +202,51 @@ namespace NeonRush
             }
         }
 
-        public void OnShipPassCheckpoint(ShipController ship, Checkpoint checkpoint)
+        public void RefreshCheckpoints()
         {
-            RegisterCheckpointPass(ship, checkpoint, ship.name, ship.GetComponent<ShipInput>() != null);
+            checkpoints = FindObjectsByType<Checkpoint>().ToList();
+            checkpoints = checkpoints.OrderBy(c => c.Index).ToList();
         }
 
-        public void OnVehiclePassCheckpoint(VehicleController vehicle, Checkpoint checkpoint)
+        public bool OnShipPassCheckpoint(ShipController ship, Checkpoint checkpoint)
         {
-            RegisterCheckpointPass(vehicle, checkpoint, vehicle.name, vehicle.isPlayerInVehicle || vehicle.CompareTag("Player") || vehicle.name.Contains("Player"));
+            return RegisterCheckpointPass(ship, checkpoint, ship.name, ship.GetComponent<ShipInput>() != null);
         }
 
-        private void RegisterCheckpointPass(object racerKey, Checkpoint checkpoint, string racerName, bool isPlayer)
+        public bool OnVehiclePassCheckpoint(VehicleController vehicle, Checkpoint checkpoint)
         {
-            if (currentState != RaceState.Racing) return;
-            if (!racerDataMap.ContainsKey(racerKey)) return;
+            // Auto-register vehicle if not in racerDataMap yet
+            if (!racerDataMap.ContainsKey(vehicle))
+            {
+                racerDataMap[vehicle] = new RacerData();
+                if (!vehicleRacers.Contains(vehicle))
+                {
+                    vehicleRacers.Add(vehicle);
+                }
+            }
+            return RegisterCheckpointPass(vehicle, checkpoint, vehicle.name, vehicle.isPlayerInVehicle || vehicle.CompareTag("Player") || vehicle.name.Contains("Player"));
+        }
+
+        private bool RegisterCheckpointPass(object racerKey, Checkpoint checkpoint, string racerName, bool isPlayer)
+        {
+            if (checkpoints.Count == 0)
+            {
+                RefreshCheckpoints();
+            }
+
+            if (!racerDataMap.ContainsKey(racerKey))
+            {
+                racerDataMap[racerKey] = new RacerData();
+            }
 
             RacerData data = racerDataMap[racerKey];
-            if (data.finished) return;
+            if (data.finished) return false;
 
             // Check if this is the correct next checkpoint or finish line
-            if (checkpoint.Index == data.nextCheckpointIndex || (checkpoint.IsFinishLine && data.nextCheckpointIndex >= checkpoints.Count - 1))
+            bool isExpected = (checkpoint.Index == data.nextCheckpointIndex);
+            bool isFinishExpected = (checkpoint.IsFinishLine && (checkpoints.Count == 0 || data.nextCheckpointIndex >= checkpoints.Count - 1));
+
+            if (isExpected || isFinishExpected)
             {
                 data.nextCheckpointIndex++;
 
@@ -246,7 +271,9 @@ namespace NeonRush
                         }
                     }
                 }
+                return true;
             }
+            return false;
         }
 
         private void OnPlayerCompletedRace(RacerData data)

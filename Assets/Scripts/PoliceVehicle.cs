@@ -195,13 +195,15 @@ public class PoliceVehicle : MonoBehaviour
                 Rigidbody targetRb = col.gameObject.GetComponent<Rigidbody>();
                 if (targetRb != null)
                 {
-                    targetRb.AddForce(transform.forward * ramForce, ForceMode.Impulse);
+                    // Apply controlled horizontal push rather than vertical launcher
+                    Vector3 forwardPush = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+                    targetRb.AddForce(forwardPush * 4.5f, ForceMode.Impulse);
                 }
 
                 VehicleController vc = col.gameObject.GetComponent<VehicleController>();
                 if (vc != null && !vc.isAntiGravityActive)
                 {
-                    vc.TakeDamage(25);
+                    vc.TakeDamage(20);
                 }
 
                 if (GameUIManager.Instance != null)
@@ -227,7 +229,7 @@ public class PoliceVehicle : MonoBehaviour
         }
         else
         {
-            transform.position = new Vector3(14f, 1.5f, 65f);
+            transform.position = new Vector3(0f, 1.5f, 65f);
             transform.rotation = Quaternion.Euler(0f, 30f, 0f);
         }
 
