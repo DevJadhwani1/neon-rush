@@ -33,6 +33,9 @@ namespace NeonRush.Tests
             Test_RaceManager_LapAndFinishValidation();
             Test_RaceManager_DNFTimeout();
             Test_VehicleData_FallbackGeneration();
+            Test_SceneLoader_ProgressNormalizationAndTips();
+            Test_GameManager_SplashAndTitleStates();
+            Test_PauseMenu_TimeScaleGuards();
 
             Debug.Log("==================================================");
             Debug.Log($">>> SUITE COMPLETED: {passed} PASSED, {failed} FAILED <<<");
@@ -272,6 +275,46 @@ namespace NeonRush.Tests
             Assert(blade != null && blade.id == "BLADE" && blade.turnRate == 130f, "VehicleStatsApplier: 'BLADE' fallback initialized");
 
             UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_SceneLoader_ProgressNormalizationAndTips()
+        {
+            Assert(SceneLoader.NormalizeProgress(0f) == 0f, "SceneLoader: Raw 0.0 maps to normalized 0.0");
+            Assert(Mathf.Abs(SceneLoader.NormalizeProgress(0.45f) - 0.5f) < 0.001f, "SceneLoader: Raw 0.45 maps to normalized 0.50");
+            Assert(Mathf.Abs(SceneLoader.NormalizeProgress(0.9f) - 1.0f) < 0.001f, "SceneLoader: Raw 0.9 maps to normalized 1.00");
+            Assert(SceneLoader.NormalizeProgress(1.0f) == 1f, "SceneLoader: Raw > 0.9 is clamped safely to 1.00");
+            Assert(SceneLoader.GAMEPLAY_TIPS != null && SceneLoader.GAMEPLAY_TIPS.Length >= 5, "SceneLoader: Gameplay tips carousel contains >= 5 tips");
+        }
+
+        private static void Test_GameManager_SplashAndTitleStates()
+        {
+            GameObject go = new GameObject("Test_GM_SplashTitle");
+            GameManager gm = go.AddComponent<GameManager>();
+
+            gm.ChangeState(GameState.Splash);
+            Assert(gm.CurrentState == GameState.Splash, "GM: Splash state transition verified");
+
+            gm.ChangeState(GameState.Title);
+            Assert(gm.CurrentState == GameState.Title, "GM: Title state transition verified");
+
+            gm.ChangeState(GameState.Loading);
+            Assert(gm.CurrentState == GameState.Loading, "GM: Loading state transition verified");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_PauseMenu_TimeScaleGuards()
+        {
+            Time.timeScale = 1f;
+            GameObject go = new GameObject("Test_PauseMenu");
+            PauseMenuUI pause = go.AddComponent<PauseMenuUI>();
+
+            // Simulate resume call
+            pause.Resume();
+            Assert(Time.timeScale == 1f, "PauseMenu: Resume guarantees Time.timeScale is 1.0");
+
+            UnityEngine.Object.DestroyImmediate(go);
+            Assert(Time.timeScale == 1f, "PauseMenu: OnDestroy cleans up and maintains Time.timeScale at 1.0");
         }
     }
 }

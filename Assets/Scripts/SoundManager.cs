@@ -23,4 +23,5 @@ public class SoundManager : MonoBehaviour
     public void PlayVictorySound() { }
     public void PlayMiniTurbo() { }
     public void PlayShardCollect() { }
+    public void PlayCountdownBeep(bool isGo = false) { }
 }

@@ -1,4 +1,4 @@
-// Module: UI   Owner: Member 3   Purpose: Race results screen with position, time, credits
+// Module: UI   Owner: Member 3   Purpose: Race results screen with position, time, credits, and safe transitions
 
 using UnityEngine;
 
@@ -10,21 +10,35 @@ namespace NeonRush
         private float raceTime = 0f;
         private int creditsEarned = 0;
         private static bool hasAwardedThisSession = false;
-        
+
+        private GUIStyle titleStyle;
+        private GUIStyle panelStyle;
+        private GUIStyle statsStyle;
+        private GUIStyle buttonStyle;
+        private Texture2D panelBgTex;
+        private Texture2D dimBgTex;
+
         void Start()
         {
-            // Results screen enabled
+            dimBgTex = new Texture2D(1, 1);
+            dimBgTex.SetPixel(0, 0, new Color(0.02f, 0.03f, 0.06f, 0.92f));
+            dimBgTex.Apply();
+
+            panelBgTex = new Texture2D(1, 1);
+            panelBgTex.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.14f, 0.9f));
+            panelBgTex.Apply();
+
             RaceManager raceManager = FindAnyObjectByType<RaceManager>();
             if (raceManager != null)
             {
                 finalPosition = raceManager.GetPlayerPosition();
                 raceTime = raceManager.RaceTime;
             }
-            
-            // Award credits exactly once per race completion session
+
+            // Award credits exactly once per race completion session: 1st=500, 2nd=300, 3rd=200, 4th=100
             int[] positionRewards = { 500, 300, 200, 100 };
             creditsEarned = positionRewards[Mathf.Clamp(finalPosition - 1, 0, 3)];
-            
+
             if (!hasAwardedThisSession)
             {
                 SaveData data = SaveSystem.Load();
@@ -38,7 +52,7 @@ namespace NeonRush
                 Debug.Log($"[ResultsScreenUI] Position {finalPosition}, Time {raceTime:F2}s, Previously Awarded {creditsEarned} CR");
             }
         }
-        
+
         public static void ResetRewardSession()
         {
             hasAwardedThisSession = false;
@@ -46,47 +60,78 @@ namespace NeonRush
 
         void OnGUI()
         {
-            // Results screen enabled
-            
-            GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
-            titleStyle.fontSize = 64;
-            titleStyle.fontStyle = FontStyle.Bold;
-            titleStyle.alignment = TextAnchor.UpperCenter;
-            titleStyle.normal.textColor = new Color(0f, 0.9f, 1f);
-            
-            GUI.Label(new Rect(0, 40, Screen.width, 80), "RACE COMPLETE!", titleStyle);
-            
-            // Stats panel
-            float centerX = Screen.width * 0.5f;
-            float centerY = Screen.height * 0.4f;
-            
-            GUIStyle statsStyle = new GUIStyle(GUI.skin.label);
-            statsStyle.fontSize = 36;
-            statsStyle.alignment = TextAnchor.MiddleCenter;
-            statsStyle.normal.textColor = Color.white;
-            
+            // Do not draw results over active loading screen
+            if (SceneLoader.Instance != null && SceneLoader.Instance.IsLoading) return;
+
+            GUI.depth = -100;
+
+            if (titleStyle == null)
+            {
+                titleStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 58,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.UpperCenter
+                };
+                titleStyle.normal.textColor = new Color(0f, 0.95f, 1f);
+
+                panelStyle = new GUIStyle(GUI.skin.box);
+
+                statsStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = 28,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                };
+                statsStyle.normal.textColor = Color.white;
+
+                buttonStyle = new GUIStyle(GUI.skin.button)
+                {
+                    fontSize = 24,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleCenter
+                };
+            }
+
+            // Dim backdrop
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), dimBgTex);
+
+            float cx = Screen.width * 0.5f;
+            float cy = Screen.height * 0.42f;
+
+            GUI.Label(new Rect(0, cy - 180, Screen.width, 70), "RACE COMPLETE", titleStyle);
+
+            // Card Panel
+            float cardW = Mathf.Clamp(Screen.width * 0.6f, 440f, 620f);
+            float cardH = 220f;
+            float cardX = cx - (cardW * 0.5f);
+            float cardY = cy - 90f;
+
+            GUI.DrawTexture(new Rect(cardX, cardY, cardW, cardH), panelBgTex);
+
             string positionText = GetOrdinal(finalPosition);
             string timeText = FormatTime(raceTime);
-            
-            string stats = $"POSITION: {positionText}\n\n" +
-                           $"TIME: {timeText}\n\n" +
-                           $"CREDITS EARNED: +{creditsEarned}";
-            
-            GUI.Label(new Rect(centerX - 300, centerY - 100, 600, 300), stats, statsStyle);
-            
-            // Buttons
-            GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
-            buttonStyle.fontSize = 28;
-            buttonStyle.fontStyle = FontStyle.Bold;
-            
-            float buttonY = Screen.height - 120;
-            
-            if (GUI.Button(new Rect(centerX - 420, buttonY, 260, 60), "RACE AGAIN", buttonStyle))
+
+            string stats = $"FINAL POSITION:  {positionText}\n\n" +
+                           $"ELAPSED TIME:  {timeText}\n\n" +
+                           $"CREDITS EARNED:  +{creditsEarned} CR";
+
+            GUI.Label(new Rect(cardX + 20, cardY + 25, cardW - 40, cardH - 50), stats, statsStyle);
+
+            // Action Buttons
+            float buttonY = cy + 160f;
+            float btnW = 200f;
+            float btnH = 55f;
+            float spacing = 20f;
+            float totalBtnW = (btnW * 3) + (spacing * 2);
+            float startBtnX = cx - (totalBtnW * 0.5f);
+
+            if (GUI.Button(new Rect(startBtnX, buttonY, btnW, btnH), "RACE AGAIN", buttonStyle))
             {
                 SceneLoader.LoadRace();
             }
-            
-            if (GUI.Button(new Rect(centerX - 130, buttonY, 260, 60), "GARAGE", buttonStyle))
+
+            if (GUI.Button(new Rect(startBtnX + btnW + spacing, buttonY, btnW, btnH), "GARAGE", buttonStyle))
             {
                 var garageUI = FindAnyObjectByType<GarageUI>();
                 if (garageUI != null)
@@ -100,8 +145,8 @@ namespace NeonRush
                     enabled = false;
                 }
             }
-            
-            if (GUI.Button(new Rect(centerX + 160, buttonY, 260, 60), "MENU", buttonStyle))
+
+            if (GUI.Button(new Rect(startBtnX + (btnW * 2) + (spacing * 2), buttonY, btnW, btnH), "MAIN MENU", buttonStyle))
             {
                 SceneLoader.LoadMainMenu();
             }
@@ -110,7 +155,7 @@ namespace NeonRush
         string GetOrdinal(int number)
         {
             if (number <= 0) return number.ToString();
-            
+
             switch (number % 100)
             {
                 case 11:
@@ -118,7 +163,7 @@ namespace NeonRush
                 case 13:
                     return number + "TH";
             }
-            
+
             switch (number % 10)
             {
                 case 1: return number + "ST";

@@ -6,18 +6,91 @@ namespace NeonRush
 {
     public class MainMenuUI : MonoBehaviour
     {
-        private enum MenuState { Main, TrackSelect, Settings }
-        private MenuState currentState = MenuState.Main;
+        private enum MenuState { Splash, Title, Main, TrackSelect, Settings }
+        private MenuState currentState = MenuState.Splash;
         private int selectedTrackIndex = 0;
         private string[] trackIds = { "NEON_DOWNTOWN", "CYBER_SPEEDWAY", "GRID_CIRCUIT" };
         private string[] trackNames = { "NEON DOWNTOWN", "CYBER SPEEDWAY", "GRID CIRCUIT" };
         private int[] trackPrices = { 0, 1000, 2000 }; // First track free
+
+        // Startup sequence state
+        private float splashTimer = 0f;
+        private const float SPLASH_DURATION = 3.2f;
+        private static bool hasCompletedStartupSequence = false;
+        private float titlePulseTimer = 0f;
+        private float stateEnterTime = 0f;
+        private Texture2D blackTex;
+        private Texture2D glowTex;
         
         void Start()
         {
             Debug.Log("[NeonRush] MainMenuUI loaded");
             Time.timeScale = 1f;
             EnsureEventSystem();
+
+            blackTex = new Texture2D(1, 1);
+            blackTex.SetPixel(0, 0, new Color(0.03f, 0.04f, 0.08f, 1f));
+            blackTex.Apply();
+
+            glowTex = new Texture2D(1, 1);
+            glowTex.SetPixel(0, 0, Color.white);
+            glowTex.Apply();
+
+            // If player already completed startup sequence in this session (e.g. returning from race), go to Main directly
+            if (hasCompletedStartupSequence)
+            {
+                currentState = MenuState.Main;
+                if (GameManager.Instance != null) GameManager.Instance.ChangeState(GameState.MainMenu);
+            }
+            else
+            {
+                currentState = MenuState.Splash;
+                splashTimer = 0f;
+                stateEnterTime = Time.realtimeSinceStartup;
+                if (GameManager.Instance != null) GameManager.Instance.ChangeState(GameState.Splash);
+            }
+        }
+
+        void Update()
+        {
+            titlePulseTimer += Time.unscaledDeltaTime * 3f;
+
+            if (currentState == MenuState.Splash)
+            {
+                splashTimer += Time.unscaledDeltaTime;
+                // Allow skipping splash with Space, Enter, or Mouse click after a brief buffer (0.5s)
+                if (splashTimer >= SPLASH_DURATION || (splashTimer > 0.6f && (Input.anyKeyDown || Input.GetMouseButtonDown(0))))
+                {
+                    AdvanceToTitle();
+                }
+            }
+            else if (currentState == MenuState.Title)
+            {
+                // Prevent accidental skip on the exact same frame splash was skipped
+                if (Time.realtimeSinceStartup - stateEnterTime > 0.4f)
+                {
+                    if (Input.anyKeyDown || Input.GetMouseButtonDown(0))
+                    {
+                        AdvanceToMain();
+                    }
+                }
+            }
+        }
+
+        void AdvanceToTitle()
+        {
+            currentState = MenuState.Title;
+            stateEnterTime = Time.realtimeSinceStartup;
+            if (GameManager.Instance != null) GameManager.Instance.ChangeState(GameState.Title);
+            Debug.Log("[NeonRush] Startup: Advanced to Title");
+        }
+
+        void AdvanceToMain()
+        {
+            hasCompletedStartupSequence = true;
+            currentState = MenuState.Main;
+            if (GameManager.Instance != null) GameManager.Instance.ChangeState(GameState.MainMenu);
+            Debug.Log("[NeonRush] Startup: Advanced to Main Menu");
         }
 
         void EnsureEventSystem()
@@ -33,10 +106,14 @@ namespace NeonRush
 
         void OnGUI()
         {
-            // Main menu enabled
-            
             switch (currentState)
             {
+                case MenuState.Splash:
+                    DrawStudioSplash();
+                    break;
+                case MenuState.Title:
+                    DrawGameTitle();
+                    break;
                 case MenuState.Main:
                     DrawMainMenu();
                     break;
@@ -47,6 +124,98 @@ namespace NeonRush
                     DrawSettings();
                     break;
             }
+        }
+
+        void DrawStudioSplash()
+        {
+            // Dark futuristic backdrop
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), blackTex);
+
+            // Compute smooth fade curve (fade in: 0-0.8s, hold: 0.8-2.4s, fade out: 2.4-3.2s)
+            float alpha = 1f;
+            if (splashTimer < 0.8f) alpha = Mathf.Clamp01(splashTimer / 0.8f);
+            else if (splashTimer > 2.4f) alpha = Mathf.Clamp01((SPLASH_DURATION - splashTimer) / 0.8f);
+
+            Color studioColor = new Color(0f, 0.95f, 1f, alpha);
+            Color subColor = new Color(1f, 0.15f, 0.85f, alpha * 0.9f);
+            Color dimColor = new Color(0.6f, 0.7f, 0.8f, alpha * 0.6f);
+
+            GUIStyle studioStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.width * 0.038f), 32, 54),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            studioStyle.normal.textColor = studioColor;
+
+            GUIStyle subStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.width * 0.016f), 16, 24),
+                alignment = TextAnchor.MiddleCenter
+            };
+            subStyle.normal.textColor = subColor;
+
+            GUIStyle skipStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 14,
+                alignment = TextAnchor.LowerRight
+            };
+            skipStyle.normal.textColor = dimColor;
+
+            float centerY = Screen.height * 0.45f;
+            GUI.Label(new Rect(0, centerY - 40, Screen.width, 60), "HYPERION INTERACTIVE", studioStyle);
+            GUI.Label(new Rect(0, centerY + 25, Screen.width, 35), "VIRTUAL RACING ARCHITECTURE", subStyle);
+
+            GUI.Label(new Rect(Screen.width - 240, Screen.height - 40, 220, 30), "[SPACE / CLICK TO SKIP]", skipStyle);
+        }
+
+        void DrawGameTitle()
+        {
+            // Dark backdrop
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), blackTex);
+
+            float centerY = Screen.height * 0.36f;
+
+            GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.width * 0.065f), 52, 92),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            titleStyle.normal.textColor = new Color(0f, 0.95f, 1f);
+
+            GUIStyle subtitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.width * 0.024f), 22, 36),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            subtitleStyle.normal.textColor = new Color(1f, 0.15f, 0.85f);
+
+            GUI.Label(new Rect(0, centerY - 60, Screen.width, 90), "NEON RUSH", titleStyle);
+            GUI.Label(new Rect(0, centerY + 40, Screen.width, 45), "— GRID RUNNERS —", subtitleStyle);
+
+            // Pulsing "Press Any Key" prompt
+            float pulse = (Mathf.Sin(titlePulseTimer) + 1f) * 0.5f;
+            Color promptColor = Color.Lerp(new Color(0.7f, 0.9f, 1f, 0.4f), new Color(1f, 1f, 0.2f, 1f), pulse);
+
+            GUIStyle promptStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.width * 0.02f), 18, 28),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            promptStyle.normal.textColor = promptColor;
+
+            GUI.Label(new Rect(0, Screen.height * 0.72f, Screen.width, 50), "PRESS ANY KEY OR CLICK TO ENTER", promptStyle);
+
+            GUIStyle hintStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 14,
+                alignment = TextAnchor.LowerCenter
+            };
+            hintStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f, 0.8f);
+            GUI.Label(new Rect(0, Screen.height - 45, Screen.width, 30), "KEYBOARD / CONTROLLER READY  •  UNITY 6 ARCADE ENGINE", hintStyle);
         }
 
         void DrawMainMenu()

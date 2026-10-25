@@ -180,71 +180,113 @@ public class GameUIManager : MonoBehaviour
         }
     }
 
+    // Cached HUD styles
+    private GUIStyle hudSpeedValStyle;
+    private GUIStyle hudSpeedUnitStyle;
+    private GUIStyle hudPosStyle;
+    private GUIStyle hudLapStyle;
+    private GUIStyle hudTimeStyle;
+    private Texture2D hudCardBgTex;
+
     void DrawSimplifiedHUD()
     {
-        float margin = 20f;
-        
-        // Top Left: Speed (large)
-        GUIStyle speedStyle = new GUIStyle(GUI.skin.label);
-        speedStyle.fontSize = 48;
-        speedStyle.fontStyle = FontStyle.Bold;
-        speedStyle.normal.textColor = new Color(0f, 0.9f, 1f);
-        GUI.Label(new Rect(margin, margin, 200, 60), Mathf.RoundToInt(currentSpeed).ToString(), speedStyle);
-        
-        GUIStyle labelSmall = new GUIStyle(GUI.skin.label);
-        labelSmall.fontSize = 18;
-        labelSmall.normal.textColor = Color.white;
-        GUI.Label(new Rect(margin + 90, margin + 20, 100, 30), "KM/H", labelSmall);
-        
-        // Top Center: Position & Lap
+        if (hudSpeedValStyle == null)
+        {
+            hudSpeedValStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 54,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
+            };
+            hudSpeedValStyle.normal.textColor = new Color(0f, 0.95f, 1f);
+
+            hudSpeedUnitStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 16,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
+            };
+            hudSpeedUnitStyle.normal.textColor = new Color(0.8f, 0.9f, 1f, 0.8f);
+
+            hudPosStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 38,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            hudPosStyle.normal.textColor = new Color(1f, 0.95f, 0.2f);
+
+            hudLapStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 20,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            hudLapStyle.normal.textColor = Color.white;
+
+            hudTimeStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 32,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight
+            };
+            hudTimeStyle.normal.textColor = new Color(0f, 1f, 0.85f);
+
+            hudCardBgTex = new Texture2D(1, 1);
+            hudCardBgTex.SetPixel(0, 0, new Color(0.04f, 0.05f, 0.09f, 0.75f));
+            hudCardBgTex.Apply();
+        }
+
+        float margin = 24f;
+
+        // --- TOP LEFT: Speedometer Card ---
+        Rect speedCard = new Rect(margin, margin, 180, 75);
+        GUI.DrawTexture(speedCard, hudCardBgTex);
+        int spd = Mathf.RoundToInt(currentSpeed);
+        GUI.Label(new Rect(margin + 16, margin + 6, 95, 60), spd.ToString(), hudSpeedValStyle);
+        GUI.Label(new Rect(margin + 115, margin + 26, 60, 25), "KM/H", hudSpeedUnitStyle);
+
+        // --- TOP CENTER: Position & Lap Card ---
         RaceManager rm = FindAnyObjectByType<RaceManager>();
         if (rm != null)
         {
             int position = rm.GetPlayerPosition();
-            int totalRacers = 4; // Default to 4 racers
-            
-            // Get lap info from RaceManager
+            int totalRacers = 4;
             int currentLap = rm.GetPlayerLap();
             int totalLaps = rm.TotalLaps;
-            
-            GUIStyle posStyle = new GUIStyle(GUI.skin.label);
-            posStyle.fontSize = 36;
-            posStyle.fontStyle = FontStyle.Bold;
-            posStyle.alignment = TextAnchor.UpperCenter;
-            posStyle.normal.textColor = Color.yellow;
-            
-            GUI.Label(new Rect(Screen.width/2 - 150, margin, 300, 50), $"{position}/{totalRacers}", posStyle);
-            
-            GUIStyle lapStyle = new GUIStyle(GUI.skin.label);
-            lapStyle.fontSize = 24;
-            lapStyle.alignment = TextAnchor.UpperCenter;
-            lapStyle.normal.textColor = Color.white;
-            
-            GUI.Label(new Rect(Screen.width/2 - 150, margin + 50, 300, 40), $"LAP {currentLap}/{totalLaps}", lapStyle);
+
+            Rect centerCard = new Rect(Screen.width * 0.5f - 130, margin, 260, 75);
+            GUI.DrawTexture(centerCard, hudCardBgTex);
+
+            GUI.Label(new Rect(centerCard.x, centerCard.y + 4, centerCard.width, 42), $"POS {position} / {totalRacers}", hudPosStyle);
+            GUI.Label(new Rect(centerCard.x, centerCard.y + 44, centerCard.width, 26), $"LAP {currentLap} / {totalLaps}", hudLapStyle);
         }
-        
-        // Top Right: Race Time
-        GUIStyle timeStyle = new GUIStyle(GUI.skin.label);
-        timeStyle.fontSize = 28;
-        timeStyle.fontStyle = FontStyle.Bold;
-        timeStyle.alignment = TextAnchor.UpperRight;
-        timeStyle.normal.textColor = new Color(0f, 1f, 0.8f);
-        
+
+        // --- TOP RIGHT: Race Timer Card ---
+        Rect timeCard = new Rect(Screen.width - 200 - margin, margin, 200, 75);
+        GUI.DrawTexture(timeCard, hudCardBgTex);
+
         int minutes = Mathf.FloorToInt(raceTime / 60f);
         int seconds = Mathf.FloorToInt(raceTime % 60f);
-        GUI.Label(new Rect(Screen.width - 200 - margin, margin, 200, 40), $"{minutes:00}:{seconds:00}", timeStyle);
-        
-        // Bottom Left: Boost Bar
+        int millis = Mathf.FloorToInt((raceTime * 100f) % 100f);
+        GUI.Label(new Rect(timeCard.x + 10, timeCard.y + 16, timeCard.width - 25, 45), $"{minutes:00}:{seconds:00}.{millis:00}", hudTimeStyle);
+
+        // --- BOTTOM LEFT: Boost & Hover Charge Card ---
         {
+            float boostW = 240f;
+            float boostH = 68f;
             float boostX = margin;
-            float boostY = Screen.height - 80 - margin;
-            
-            GUI.Label(new Rect(boostX, boostY - 25, 200, 25), "BOOST", labelStyle);
-            
-            Rect boostRect = new Rect(boostX, boostY, 200, 20);
-            DrawBar(boostRect, antiGravityRatio, new Color(1f, 0.1f, 0.85f), new Color(0.2f, 0.2f, 0.2f, 0.8f));
-            
-            GUI.Label(new Rect(boostX, boostY + 25, 200, 25), antiGravityStatus, smallStyle);
+            float boostY = Screen.height - boostH - margin;
+
+            Rect boostCard = new Rect(boostX, boostY, boostW, boostH);
+            GUI.DrawTexture(boostCard, hudCardBgTex);
+
+            GUI.Label(new Rect(boostX + 16, boostY + 6, 200, 20), "ANTI-GRAV / BOOST", smallStyle);
+
+            Rect boostBar = new Rect(boostX + 16, boostY + 28, boostW - 32, 14);
+            DrawBar(boostBar, antiGravityRatio, new Color(1f, 0.15f, 0.85f), new Color(0.12f, 0.14f, 0.2f, 0.9f));
+
+            GUI.Label(new Rect(boostX + 16, boostY + 44, boostW - 32, 20), antiGravityStatus, smallStyle);
         }
     }
 
