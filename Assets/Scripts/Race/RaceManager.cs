@@ -14,16 +14,20 @@ namespace NeonRush
         [Header("Race Settings")]
         [SerializeField] private int totalLaps = 3;
         [SerializeField] private float countdownTime = 3f;
+        [SerializeField] private float raceTimeout = 180f; // 3 min DNF timeout
         [SerializeField] private List<ShipController> racers = new List<ShipController>();
+        [SerializeField] private List<VehicleController> vehicleRacers = new List<VehicleController>();
 
         [Header("Checkpoints")]
         [SerializeField] private List<Checkpoint> checkpoints = new List<Checkpoint>();
 
         // Race state
-        private Dictionary<ShipController, RacerData> racerDataMap = new Dictionary<ShipController, RacerData>();
+        private Dictionary<object, RacerData> racerDataMap = new Dictionary<object, RacerData>();
         private RaceState currentState = RaceState.PreRace;
         private float raceTime = 0f;
         private float countdownTimer = 0f;
+        private float postFinishTimer = 0f;
+        private bool hasTriggeredFinish = false;
 
         public RaceState CurrentState => currentState;
         public float RaceTime => raceTime;
@@ -48,23 +52,38 @@ namespace NeonRush
 
         private void Start()
         {
+            // Reset reward session for a new race
+            ResultsScreenUI.ResetRewardSession();
+
             // Find all checkpoints if not set
             if (checkpoints.Count == 0)
             {
-                checkpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).ToList();
+                checkpoints = FindObjectsByType<Checkpoint>().ToList();
                 checkpoints = checkpoints.OrderBy(c => c.Index).ToList();
             }
 
             // Find all ships if not set
             if (racers.Count == 0)
             {
-                racers = FindObjectsByType<ShipController>(FindObjectsSortMode.None).ToList();
+                racers = FindObjectsByType<ShipController>().ToList();
             }
 
-            // Initialize racer data
+            // Find all vehicles if not set
+            if (vehicleRacers.Count == 0)
+            {
+                vehicleRacers = FindObjectsByType<VehicleController>().ToList();
+            }
+
+            // Initialize racer data for ships
             foreach (ShipController ship in racers)
             {
                 racerDataMap[ship] = new RacerData();
+            }
+
+            // Initialize racer data for vehicles
+            foreach (VehicleController vehicle in vehicleRacers)
+            {
+                racerDataMap[vehicle] = new RacerData();
             }
 
             StartCountdown();
@@ -100,6 +119,12 @@ namespace NeonRush
                 }
             }
 
+            // Freeze vehicles during countdown
+            foreach (VehicleController vehicle in vehicleRacers)
+            {
+                vehicle.isPlayerInVehicle = false;
+            }
+
             Debug.Log($"Race countdown started: {countdownTime}s");
         }
 
@@ -113,10 +138,15 @@ namespace NeonRush
             }
         }
 
-        private void StartRace()
+        public void StartRace()
         {
             currentState = RaceState.Racing;
             raceTime = 0f;
+
+            foreach (VehicleController vehicle in vehicleRacers)
+            {
+                vehicle.isPlayerInVehicle = true;
+            }
 
             Debug.Log("Race started! GO GO GO!");
 
@@ -125,6 +155,10 @@ namespace NeonRush
             if (hud != null)
             {
                 hud.ShowNotification("GO!", 1f);
+            }
+            if (GameUIManager.Instance != null)
+            {
+                GameUIManager.Instance.ShowNotification("GO!", 1.5f);
             }
         }
 
@@ -135,9 +169,18 @@ namespace NeonRush
             // Update positions
             UpdateRacePositions();
 
-            // Check if all racers finished
-            bool allFinished = racerDataMap.Values.All(data => data.finished);
-            if (allFinished)
+            // Check if player has finished; if so, start countdown to finish remaining racers
+            bool playerFinished = IsPlayerFinished();
+            if (playerFinished)
+            {
+                postFinishTimer += Time.deltaTime;
+            }
+
+            // Check if all racers finished or timeout occurred
+            bool allFinished = racerDataMap.Values.Count > 0 && racerDataMap.Values.All(data => data.finished);
+            bool dnfTimeout = (playerFinished && postFinishTimer >= 15f) || (raceTime >= raceTimeout);
+
+            if ((allFinished || dnfTimeout) && !hasTriggeredFinish)
             {
                 EndRace();
             }
@@ -161,14 +204,24 @@ namespace NeonRush
 
         public void OnShipPassCheckpoint(ShipController ship, Checkpoint checkpoint)
         {
-            if (currentState != RaceState.Racing) return;
-            if (!racerDataMap.ContainsKey(ship)) return;
+            RegisterCheckpointPass(ship, checkpoint, ship.name, ship.GetComponent<ShipInput>() != null);
+        }
 
-            RacerData data = racerDataMap[ship];
+        public void OnVehiclePassCheckpoint(VehicleController vehicle, Checkpoint checkpoint)
+        {
+            RegisterCheckpointPass(vehicle, checkpoint, vehicle.name, vehicle.isPlayerInVehicle || vehicle.CompareTag("Player") || vehicle.name.Contains("Player"));
+        }
+
+        private void RegisterCheckpointPass(object racerKey, Checkpoint checkpoint, string racerName, bool isPlayer)
+        {
+            if (currentState != RaceState.Racing) return;
+            if (!racerDataMap.ContainsKey(racerKey)) return;
+
+            RacerData data = racerDataMap[racerKey];
             if (data.finished) return;
 
-            // Check if this is the correct next checkpoint
-            if (checkpoint.Index == data.nextCheckpointIndex)
+            // Check if this is the correct next checkpoint or finish line
+            if (checkpoint.Index == data.nextCheckpointIndex || (checkpoint.IsFinishLine && data.nextCheckpointIndex >= checkpoints.Count - 1))
             {
                 data.nextCheckpointIndex++;
 
@@ -178,49 +231,117 @@ namespace NeonRush
                     data.currentLap++;
                     data.nextCheckpointIndex = 0;
 
-                    Debug.Log($"{ship.name} completed lap {data.currentLap}/{totalLaps}");
+                    Debug.Log($"{racerName} completed lap {data.currentLap}/{totalLaps}");
 
                     // Check if finished race
                     if (data.currentLap >= totalLaps)
                     {
                         data.finished = true;
                         data.raceTime = raceTime;
-                        Debug.Log($"{ship.name} finished the race! Time: {data.raceTime:F2}s");
+                        Debug.Log($"{racerName} finished the race! Time: {data.raceTime:F2}s");
 
-                        // Notify UI
-                        RaceHUD hud = FindAnyObjectByType<RaceHUD>();
-                        if (hud != null && ship.GetComponent<ShipInput>() != null)
+                        if (isPlayer)
                         {
-                            hud.ShowNotification($"Race Complete! Time: {data.raceTime:F2}s", 5f);
+                            OnPlayerCompletedRace(data);
                         }
                     }
                 }
             }
         }
 
+        private void OnPlayerCompletedRace(RacerData data)
+        {
+            RaceHUD hud = FindAnyObjectByType<RaceHUD>();
+            if (hud != null)
+            {
+                hud.ShowNotification($"Race Complete! Time: {data.raceTime:F2}s", 5f);
+            }
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnCourseCompleted();
+            }
+
+            // Also attach or enable ResultsScreenUI if present
+            var resultsUI = FindAnyObjectByType<ResultsScreenUI>();
+            if (resultsUI != null)
+            {
+                resultsUI.enabled = true;
+            }
+            else
+            {
+                gameObject.AddComponent<ResultsScreenUI>();
+            }
+        }
+
+        private bool IsPlayerFinished()
+        {
+            // Check vehicle racer
+            var playerVehicle = vehicleRacers.FirstOrDefault(v => v.isPlayerInVehicle || v.CompareTag("Player") || v.name.Contains("Player"));
+            if (playerVehicle != null && racerDataMap.ContainsKey(playerVehicle))
+            {
+                return racerDataMap[playerVehicle].finished;
+            }
+
+            // Check ship racer
+            var playerShip = racers.FirstOrDefault(s => s.GetComponent<ShipInput>() != null);
+            if (playerShip != null && racerDataMap.ContainsKey(playerShip))
+            {
+                return racerDataMap[playerShip].finished;
+            }
+
+            return false;
+        }
+
         private void EndRace()
         {
+            hasTriggeredFinish = true;
             currentState = RaceState.Finished;
-            Debug.Log("Race finished! All racers completed.");
+
+            // Mark any remaining racers as DNF
+            foreach (var kvp in racerDataMap)
+            {
+                if (!kvp.Value.finished)
+                {
+                    kvp.Value.finished = true;
+                    kvp.Value.raceTime = raceTime;
+                }
+            }
+
+            Debug.Log("Race finished! All racers processed (or DNF applied).");
         }
 
         public int GetPlayerPosition()
         {
-            ShipController playerShip = racers.FirstOrDefault(s => s.GetComponent<ShipInput>() != null);
+            var playerVehicle = vehicleRacers.FirstOrDefault(v => v.isPlayerInVehicle || v.CompareTag("Player") || v.name.Contains("Player"));
+            if (playerVehicle != null && racerDataMap.ContainsKey(playerVehicle))
+            {
+                return racerDataMap[playerVehicle].position;
+            }
+
+            var playerShip = racers.FirstOrDefault(s => s.GetComponent<ShipInput>() != null);
             if (playerShip != null && racerDataMap.ContainsKey(playerShip))
             {
                 return racerDataMap[playerShip].position;
             }
+
             return 1;
         }
 
         public int GetPlayerLap()
         {
-            ShipController playerShip = racers.FirstOrDefault(s => s.GetComponent<ShipInput>() != null);
+            var playerVehicle = vehicleRacers.FirstOrDefault(v => v.isPlayerInVehicle || v.CompareTag("Player") || v.name.Contains("Player"));
+            if (playerVehicle != null && racerDataMap.ContainsKey(playerVehicle))
+            {
+                return racerDataMap[playerVehicle].currentLap;
+            }
+
+            var playerShip = racers.FirstOrDefault(s => s.GetComponent<ShipInput>() != null);
             if (playerShip != null && racerDataMap.ContainsKey(playerShip))
             {
                 return racerDataMap[playerShip].currentLap;
             }
+
             return 0;
         }
 

@@ -82,6 +82,11 @@ public class GameUIManager : MonoBehaviour
         {
             hitFlashTimer -= Time.deltaTime;
         }
+
+        if ((showVictory || showGameOver) && Input.GetKeyDown(KeyCode.R))
+        {
+            SceneLoader.LoadRace();
+        }
     }
 
     void InitStyles()

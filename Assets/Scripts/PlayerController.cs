@@ -1,4 +1,5 @@
 using UnityEngine;
+using NeonRush;
 
 public class PlayerController : MonoBehaviour
 {

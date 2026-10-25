@@ -78,10 +78,19 @@ namespace NeonRush
                 currentState = MenuState.TrackSelect;
             }
             
-            // Garage button removed - will rebuild in new UI system
-            // if (GUI.Button(new Rect(centerX - 180, startY + 80, 360, 60), "GARAGE", buttonStyle))
+            if (GUI.Button(new Rect(centerX - 180, startY + 80, 360, 60), "GARAGE", buttonStyle))
             {
-                SceneLoader.LoadMainMenu(); // TODO: LoadGarage when scene exists
+                var garageUI = FindAnyObjectByType<GarageUI>();
+                if (garageUI != null)
+                {
+                    garageUI.enabled = true;
+                    enabled = false;
+                }
+                else
+                {
+                    gameObject.AddComponent<GarageUI>();
+                    enabled = false;
+                }
             }
             
             if (GUI.Button(new Rect(centerX - 180, startY + 160, 360, 60), "SETTINGS", buttonStyle))

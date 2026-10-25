@@ -36,18 +36,18 @@ namespace NeonRush
             // Get upgrade levels
             int[] upgrades = SaveSystem.GetUpgradeLevels(vehicleId);
             
-            // Apply stats with upgrades (each level gives +8%)
-            float engineMult = 1f + (upgrades[0] * 0.08f);
-            float handlingMult = 1f + (upgrades[1] * 0.08f);
-            float boostMult = 1f + (upgrades[2] * 0.08f);
-            float armorMult = 1f + (upgrades[3] * 0.08f);
+            // Apply stats with upgrades using authoritative UpgradeSystem multipliers
+            float engineMult = UpgradeSystem.GetSpeedMultiplier(upgrades[0]);       // +15% per level
+            float handlingMult = UpgradeSystem.GetHandlingMultiplier(upgrades[1]); // +10% per level
+            float boostBonus = UpgradeSystem.GetBoostDurationBonus(upgrades[2]);   // +0.5s per level
+            int armorBonus = UpgradeSystem.GetArmorBonus(upgrades[3]);             // +20 HP per level
             
             // === NEON RUSH: Apply vehicle stats ===
             vehicleController.maxSpeed = data.maxSpeed * engineMult;
             vehicleController.acceleration = data.acceleration * engineMult;
             vehicleController.turnSpeed = data.turnRate * handlingMult;
-            vehicleController.antiGravityDuration = data.boostDuration * boostMult;
-            vehicleController.maxHealth = Mathf.RoundToInt(data.maxArmor * armorMult);
+            vehicleController.antiGravityDuration = data.boostDuration + boostBonus;
+            vehicleController.maxHealth = data.maxArmor + armorBonus;
             vehicleController.health = vehicleController.maxHealth;
             // ==========================================
             
@@ -199,15 +199,66 @@ namespace NeonRush
 
         VehicleData LoadVehicleData(string vehicleId)
         {
-            // Try to load from Resources or Assets
-            VehicleData data = Resources.Load<VehicleData>($"Data/Vehicles/{vehicleId}");
+            if (string.IsNullOrEmpty(vehicleId)) vehicleId = "VOLT";
+            string idUpper = vehicleId.ToUpper();
+
+            // Try to load from Resources
+            VehicleData data = Resources.Load<VehicleData>($"Data/Vehicles/{idUpper}") ??
+                               Resources.Load<VehicleData>($"VehicleData/{idUpper}") ??
+                               Resources.Load<VehicleData>($"VehicleData/{vehicleId.ToLower()}");
             
 #if UNITY_EDITOR
             if (data == null)
             {
-                data = UnityEditor.AssetDatabase.LoadAssetAtPath<VehicleData>($"Assets/Data/Vehicles/{vehicleId}.asset");
+                data = UnityEditor.AssetDatabase.LoadAssetAtPath<VehicleData>($"Assets/Data/Vehicles/{idUpper}.asset");
             }
 #endif
+
+            // Fallback runtime instance if asset file is missing
+            if (data == null)
+            {
+                data = ScriptableObject.CreateInstance<VehicleData>();
+                data.id = idUpper;
+                if (idUpper == "BRICK")
+                {
+                    data.displayName = "Heavy Tank";
+                    data.price = 1500;
+                    data.maxSpeed = 32f;
+                    data.acceleration = 40f;
+                    data.turnRate = 95f;
+                    data.boostDuration = 3.0f;
+                    data.maxArmor = 140;
+                    data.shapePreset = VehicleShape.Brick;
+                    data.bodyColor = new Color(1f, 0.1f, 0.85f);
+                    data.glowColor = data.bodyColor;
+                }
+                else if (idUpper == "BLADE")
+                {
+                    data.displayName = "Speed Demon";
+                    data.price = 3000;
+                    data.maxSpeed = 50f;
+                    data.acceleration = 55f;
+                    data.turnRate = 130f;
+                    data.boostDuration = 4.0f;
+                    data.maxArmor = 80;
+                    data.shapePreset = VehicleShape.Blade;
+                    data.bodyColor = new Color(0.5f, 1f, 0f);
+                    data.glowColor = data.bodyColor;
+                }
+                else
+                {
+                    data.displayName = "Volt Interceptor";
+                    data.price = 0;
+                    data.maxSpeed = 40f;
+                    data.acceleration = 48f;
+                    data.turnRate = 115f;
+                    data.boostDuration = 3.5f;
+                    data.maxArmor = 100;
+                    data.shapePreset = VehicleShape.Interceptor;
+                    data.bodyColor = new Color(0f, 0.9f, 1f);
+                    data.glowColor = data.bodyColor;
+                }
+            }
             
             return data;
         }

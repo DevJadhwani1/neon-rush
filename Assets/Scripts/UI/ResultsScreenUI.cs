@@ -9,27 +9,39 @@ namespace NeonRush
         private int finalPosition = 1;
         private float raceTime = 0f;
         private int creditsEarned = 0;
+        private static bool hasAwardedThisSession = false;
         
         void Start()
         {
             // Results screen enabled
-            
             RaceManager raceManager = FindAnyObjectByType<RaceManager>();
             if (raceManager != null)
             {
                 finalPosition = raceManager.GetPlayerPosition();
-                raceTime = raceManager.raceTime;
+                raceTime = raceManager.RaceTime;
             }
             
-            // Award credits: 1st=500, 2nd=300, 3rd=200, 4th=100
+            // Award credits exactly once per race completion session
             int[] positionRewards = { 500, 300, 200, 100 };
             creditsEarned = positionRewards[Mathf.Clamp(finalPosition - 1, 0, 3)];
             
-            SaveData data = SaveSystem.Load();
-            data.credits += creditsEarned;
-            SaveSystem.Save(data);
-            
-            Debug.Log($"[ResultsScreenUI] Position {finalPosition}, Time {raceTime:F2}s, Earned {creditsEarned} CR");
+            if (!hasAwardedThisSession)
+            {
+                SaveData data = SaveSystem.Load();
+                data.credits += creditsEarned;
+                SaveSystem.Save(data);
+                hasAwardedThisSession = true;
+                Debug.Log($"[ResultsScreenUI] Position {finalPosition}, Time {raceTime:F2}s, Awarded {creditsEarned} CR");
+            }
+            else
+            {
+                Debug.Log($"[ResultsScreenUI] Position {finalPosition}, Time {raceTime:F2}s, Previously Awarded {creditsEarned} CR");
+            }
+        }
+        
+        public static void ResetRewardSession()
+        {
+            hasAwardedThisSession = false;
         }
 
         void OnGUI()
@@ -74,10 +86,19 @@ namespace NeonRush
                 SceneLoader.LoadRace();
             }
             
-            // Garage button removed - will rebuild in new UI system
-            // if (GUI.Button(new Rect(centerX - 130, buttonY, 260, 60), "GARAGE", buttonStyle))
+            if (GUI.Button(new Rect(centerX - 130, buttonY, 260, 60), "GARAGE", buttonStyle))
             {
-                SceneLoader.LoadMainMenu(); // TODO: LoadGarage
+                var garageUI = FindAnyObjectByType<GarageUI>();
+                if (garageUI != null)
+                {
+                    garageUI.enabled = true;
+                    enabled = false;
+                }
+                else
+                {
+                    gameObject.AddComponent<GarageUI>();
+                    enabled = false;
+                }
             }
             
             if (GUI.Button(new Rect(centerX + 160, buttonY, 260, 60), "MENU", buttonStyle))

@@ -74,8 +74,7 @@ namespace NeonRush
             Debug.Log("[NeonRush] SceneLoader.LoadRace() called");
             if (instance != null && !instance.isLoading)
             {
-                // Load the race scene (the original ,.unity scene at index 1)
-                instance.StartCoroutine(instance.LoadSceneAsync("Assets/,.unity", true));
+                instance.StartCoroutine(instance.LoadSceneAsync("GravShiftNeonCircuit", true));
             }
             else if (instance == null)
             {
@@ -93,17 +92,23 @@ namespace NeonRush
             yield return FadeOut(0.5f);
             
             // Start loading
-            AsyncOperation op;
-            if (isRaceScene)
+            AsyncOperation op = null;
+            try
             {
-                // For race scene, use scene index 1
-                Debug.Log("[NeonRush] Loading race scene at index 1");
-                op = SceneManager.LoadSceneAsync(1);
+                if (isRaceScene)
+                {
+                    Debug.Log("[NeonRush] Loading race scene at index 1");
+                    op = SceneManager.LoadSceneAsync(1);
+                }
+                else
+                {
+                    Debug.Log($"[NeonRush] Loading scene by name: {sceneName}");
+                    op = SceneManager.LoadSceneAsync(sceneName);
+                }
             }
-            else
+            catch (System.Exception ex)
             {
-                Debug.Log($"[NeonRush] Loading scene by name: {sceneName}");
-                op = SceneManager.LoadSceneAsync(sceneName);
+                Debug.LogError($"[NeonRush] Exception starting scene load: {ex.Message}");
             }
             
             if (op != null)
@@ -126,7 +131,10 @@ namespace NeonRush
             }
             else
             {
-                Debug.LogError("[NeonRush] Failed to start scene load operation!");
+                Debug.LogError("[NeonRush] Failed to start scene load operation! Recovering from black screen.");
+                yield return FadeIn(0.25f);
+                isLoading = false;
+                yield break;
             }
             
             // Fade from black

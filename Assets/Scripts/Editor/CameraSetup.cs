@@ -69,11 +69,11 @@ namespace NeonRush
             // Add Transposer for follow
             CinemachineFollow follow = vcamObj.AddComponent<CinemachineFollow>();
             follow.FollowOffset = new Vector3(0f, 3f, -8f);
-            follow.Damping = new Vector3(0.5f, 0.5f, 0.5f);
+            follow.TrackerSettings.PositionDamping = new Vector3(0.5f, 0.5f, 0.5f);
 
             // Add rotation composer for look
             CinemachineRotationComposer rotComposer = vcamObj.AddComponent<CinemachineRotationComposer>();
-            rotComposer.Damping = new Vector3(0.5f, 0.5f, 0.5f);
+            rotComposer.Damping = new Vector2(0.5f, 0.5f);
 
             Debug.Log("Created chase camera (priority 10)");
         }
@@ -91,11 +91,11 @@ namespace NeonRush
             // Add Transposer for cockpit position
             CinemachineFollow follow = vcamObj.AddComponent<CinemachineFollow>();
             follow.FollowOffset = new Vector3(0f, 0.8f, 0.5f);
-            follow.Damping = new Vector3(0.1f, 0.1f, 0.1f);
+            follow.TrackerSettings.PositionDamping = new Vector3(0.1f, 0.1f, 0.1f);
 
             // Add rotation composer
             CinemachineRotationComposer rotComposer = vcamObj.AddComponent<CinemachineRotationComposer>();
-            rotComposer.Damping = new Vector3(0.1f, 0.1f, 0.1f);
+            rotComposer.Damping = new Vector2(0.1f, 0.1f);
 
             // Wider FOV for cockpit
             vcam.Lens.FieldOfView = 90f;
@@ -117,7 +117,7 @@ namespace NeonRush
             // Add Transposer for cinematic high angle
             CinemachineFollow follow = vcamObj.AddComponent<CinemachineFollow>();
             follow.FollowOffset = new Vector3(0f, 30f, -20f);
-            follow.Damping = new Vector3(1f, 1f, 1f);
+            follow.TrackerSettings.PositionDamping = new Vector3(1f, 1f, 1f);
 
             Debug.Log("Created cinematic camera (priority 1)");
         }

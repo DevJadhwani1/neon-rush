@@ -32,6 +32,21 @@ public static class GameInput
         return Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.W);
     }
 
+    public static bool GetBrake()
+    {
+        return GetBrakeHeld() || Input.GetKey(KeyCode.DownArrow);
+    }
+
+    public static bool GetDrift()
+    {
+        return Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.LeftControl);
+    }
+
+    public static bool GetAntiGravityDown()
+    {
+        return Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.F);
+    }
+
     public static bool GetResetDown()
     {
         return Input.GetKeyDown(KeyCode.R);

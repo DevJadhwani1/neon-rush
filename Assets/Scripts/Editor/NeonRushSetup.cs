@@ -11,6 +11,15 @@ namespace NeonRush
 {
     public class NeonRushSetup : EditorWindow
     {
+        [MenuItem("Tools/Neon Rush/Setup Everything Headless")]
+        public static void SetupEverythingHeadless()
+        {
+            CreateMainMenuScene();
+            CreateAllDataAssets();
+            SetBuildSettings();
+            Debug.Log("[NeonRushSetup] Headless setup complete.");
+        }
+
         [MenuItem("Tools/Neon Rush/Setup Everything")]
         public static void SetupEverything()
         {
@@ -149,17 +158,8 @@ namespace NeonRush
             EditorBuildSettingsScene[] scenes = new EditorBuildSettingsScene[2];
             scenes[0] = new EditorBuildSettingsScene("Assets/Scenes/MainMenu.unity", true);
             
-            // Try to find the race scene
-            string racePath = "Assets/,.unity";
-            if (File.Exists(racePath))
-            {
-                scenes[1] = new EditorBuildSettingsScene(racePath, true);
-            }
-            else
-            {
-                racePath = "Assets/Scenes/GravShiftNeonCircuit.unity";
-                scenes[1] = new EditorBuildSettingsScene(racePath, true);
-            }
+            string racePath = "Assets/Scenes/GravShiftNeonCircuit.unity";
+            scenes[1] = new EditorBuildSettingsScene(racePath, true);
             
             EditorBuildSettings.scenes = scenes;
             

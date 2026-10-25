@@ -7,7 +7,7 @@ namespace NeonRush
     public class GarageUI : MonoBehaviour
     {
         private int selectedVehicleIndex = 0;
-        private string[] vehicleIds = { "volt", "brick", "blade" };
+        private string[] vehicleIds = { "VOLT", "BRICK", "BLADE" };
         private VehicleData[] vehicleData = new VehicleData[3];
         
         private SaveData saveData;
@@ -21,9 +21,10 @@ namespace NeonRush
             // Pre-select vehicle from GameManager
             if (GameManager.Instance != null && !string.IsNullOrEmpty(GameManager.Instance.selectedVehicleId))
             {
+                string sel = GameManager.Instance.selectedVehicleId.ToUpper();
                 for (int i = 0; i < vehicleIds.Length; i++)
                 {
-                    if (vehicleIds[i] == GameManager.Instance.selectedVehicleId)
+                    if (vehicleIds[i].ToUpper() == sel)
                     {
                         selectedVehicleIndex = i;
                         break;
@@ -36,10 +37,50 @@ namespace NeonRush
         {
             for (int i = 0; i < vehicleIds.Length; i++)
             {
-                VehicleData data = Resources.Load<VehicleData>("VehicleData/" + vehicleIds[i]);
+                string id = vehicleIds[i];
+                VehicleData data = Resources.Load<VehicleData>($"Data/Vehicles/{id}") ??
+                                   Resources.Load<VehicleData>($"VehicleData/{id}") ??
+                                   Resources.Load<VehicleData>($"VehicleData/{id.ToLower()}");
+#if UNITY_EDITOR
                 if (data == null)
                 {
-                    Debug.LogWarning("[GarageUI] Could not load VehicleData/" + vehicleIds[i]);
+                    data = UnityEditor.AssetDatabase.LoadAssetAtPath<VehicleData>($"Assets/Data/Vehicles/{id}.asset");
+                }
+#endif
+                if (data == null)
+                {
+                    data = ScriptableObject.CreateInstance<VehicleData>();
+                    data.id = id;
+                    if (id == "BRICK")
+                    {
+                        data.displayName = "Heavy Tank";
+                        data.price = 1500;
+                        data.maxSpeed = 32f;
+                        data.acceleration = 40f;
+                        data.turnRate = 95f;
+                        data.shapePreset = VehicleShape.Brick;
+                        data.bodyColor = new Color(1f, 0.1f, 0.85f);
+                    }
+                    else if (id == "BLADE")
+                    {
+                        data.displayName = "Speed Demon";
+                        data.price = 3000;
+                        data.maxSpeed = 50f;
+                        data.acceleration = 55f;
+                        data.turnRate = 130f;
+                        data.shapePreset = VehicleShape.Blade;
+                        data.bodyColor = new Color(0.5f, 1f, 0f);
+                    }
+                    else
+                    {
+                        data.displayName = "Volt Interceptor";
+                        data.price = 0;
+                        data.maxSpeed = 40f;
+                        data.acceleration = 48f;
+                        data.turnRate = 115f;
+                        data.shapePreset = VehicleShape.Interceptor;
+                        data.bodyColor = new Color(0f, 0.9f, 1f);
+                    }
                 }
                 vehicleData[i] = data;
             }

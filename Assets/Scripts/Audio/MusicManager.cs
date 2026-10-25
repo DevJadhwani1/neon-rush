@@ -18,7 +18,7 @@ namespace NeonRush
         private void Awake()
         {
             // Singleton pattern
-            MusicManager[] managers = FindObjectsByType<MusicManager>(FindObjectsSortMode.None);
+            MusicManager[] managers = FindObjectsByType<MusicManager>();
             if (managers.Length > 1)
             {
                 Destroy(gameObject);

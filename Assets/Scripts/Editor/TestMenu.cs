@@ -9,14 +9,14 @@ public static class TestMenu
     public static void PrintScenePlayers()
     {
         var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/GravShiftNeonCircuit.unity");
-        var players = Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        var players = Object.FindObjectsByType<PlayerController>();
         Debug.Log($"[DIAGNOSTIC] Found PlayerControllers count in scene: {players.Length}");
         foreach (var p in players)
         {
             Debug.Log($"[DIAGNOSTIC] Player: '{p.gameObject.name}' at pos {p.transform.position}, parent: '{p.transform.parent?.name}'");
         }
 
-        var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+        var allObjects = Object.FindObjectsByType<GameObject>();
         foreach (var obj in allObjects)
         {
             if (obj.name.ToLower().Contains("player"))
@@ -228,6 +228,18 @@ public static class TestMenu
         if (ph != null) ph.TakeDamage(25);
         var vc = Object.FindAnyObjectByType<VehicleController>();
         if (vc != null) vc.TakeDamage(25);
+    }
+
+    [MenuItem("AntiGravity/Open Main Menu")]
+    public static void OpenMainMenu()
+    {
+        UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/MainMenu.unity");
+    }
+
+    [MenuItem("AntiGravity/Run Suite")]
+    public static void RunSuite()
+    {
+        NeonRush.Tests.AutomatedTestRunner.RunAllTests();
     }
 }
 #endif

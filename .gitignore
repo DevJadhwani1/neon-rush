@@ -59,4 +59,5 @@ test_*.png
 .cursor/
 .kiro/
 .agents/
+*.log
 

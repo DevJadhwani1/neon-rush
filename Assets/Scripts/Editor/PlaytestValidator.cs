@@ -63,7 +63,7 @@ namespace NeonRush
 
             // Check 4: Checkpoints
             checks++;
-            Checkpoint[] checkpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
+            Checkpoint[] checkpoints = FindObjectsByType<Checkpoint>();
             if (checkpoints.Length > 0)
             {
                 Debug.Log($"✅ {checkpoints.Length} checkpoints found");
@@ -104,7 +104,7 @@ namespace NeonRush
 
             // Check 7: Virtual Cameras
             checks++;
-            Unity.Cinemachine.CinemachineCamera[] vcams = FindObjectsByType<Unity.Cinemachine.CinemachineCamera>(FindObjectsSortMode.None);
+            Unity.Cinemachine.CinemachineCamera[] vcams = FindObjectsByType<Unity.Cinemachine.CinemachineCamera>();
             if (vcams.Length > 0)
             {
                 Debug.Log($"✅ {vcams.Length} virtual cameras found");

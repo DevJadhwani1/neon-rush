@@ -19,14 +19,20 @@ namespace NeonRush
 
         private void OnTriggerEnter(Collider other)
         {
-            ShipController ship = other.GetComponent<ShipController>();
+            RaceManager raceManager = FindAnyObjectByType<RaceManager>();
+            if (raceManager == null) return;
+
+            ShipController ship = other.GetComponent<ShipController>() ?? other.GetComponentInParent<ShipController>();
             if (ship != null)
             {
-                RaceManager raceManager = FindAnyObjectByType<RaceManager>();
-                if (raceManager != null)
-                {
-                    raceManager.OnShipPassCheckpoint(ship, this);
-                }
+                raceManager.OnShipPassCheckpoint(ship, this);
+                return;
+            }
+
+            VehicleController vehicle = other.GetComponent<VehicleController>() ?? other.GetComponentInParent<VehicleController>();
+            if (vehicle != null)
+            {
+                raceManager.OnVehiclePassCheckpoint(vehicle, this);
             }
         }
 

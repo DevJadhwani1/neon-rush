@@ -243,9 +243,9 @@
       "url": "https://packages.unity.com"
     },
     "org.christowm.unity.mcp": {
-      "version": "file:/Users/dev/Documents/unity-mcp/Packages/org.christowm.unity.mcp",
+      "version": "file:org.christowm.unity.mcp",
       "depth": 0,
-      "source": "local",
+      "source": "embedded",
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.1"
       }

@@ -71,9 +71,8 @@ namespace NeonRush
             TrackBuilder trackBuilder = splineObj.AddComponent<TrackBuilder>();
             trackBuilder.trackWidth = 15f;
             trackBuilder.checkpointInterval = 20f;
-            trackBuilder.generateCheckpoints = true;
-            trackBuilder.generateBoostPads = true;
-            trackBuilder.generateBarriers = true;
+            trackBuilder.autoPlaceCheckpoints = true;
+            trackBuilder.autoPlaceBoostPads = true;
 
             // Build the track mesh
             EditorApplication.delayCall += () =>
