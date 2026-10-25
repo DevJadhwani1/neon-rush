@@ -1,0 +1,35 @@
+GRAVSHIFT: NEON CIRCUIT - PHASE 4 SETUP INSTRUCTIONS
+=====================================================
+
+The vehicle system has been implemented, but Unity MCP does not support setting
+script field references directly. You need to complete the following setup in
+the Unity Editor:
+
+1. SELECT THE "GameManager" OBJECT IN THE HIERARCHY
+
+2. IN THE INSPECTOR, FIND THE "VehicleInteraction" SCRIPT COMPONENT
+
+3. ASSIGN THE FOLLOWING REFERENCES:
+   - Player: Drag the "Player" object from the hierarchy
+   - Vehicle: Drag the "Vehicle" object from the hierarchy
+   - Driver Seat: Expand Vehicle → Drag "DriverSeat" child
+   - Exit Point: Expand Vehicle → Drag "ExitPoint" child
+   - Player Camera: Drag "Main Camera" from the hierarchy
+   - Vehicle Camera: Drag "VehicleCamera" from the hierarchy
+
+4. SELECT THE "VehicleCamera" OBJECT IN THE HIERARCHY
+
+5. IN THE INSPECTOR, FIND THE "SimpleCameraFollow" SCRIPT COMPONENT
+
+6. ASSIGN THE FOLLOWING REFERENCE:
+   - Target: Drag the "Vehicle" object from the hierarchy
+
+AFTER SETUP, TEST THE SCENE:
+-----------------------------
+1. Press Play
+2. Walk the player (WASD) toward the vehicle on the display platform
+3. Press E when close to enter the vehicle
+4. Drive with WASD, Space to brake
+5. Press E again to exit the vehicle
+
+All scripts have been created and compiled successfully!
