@@ -53,8 +53,72 @@ namespace NeonRush
             }
             else if (Instance != this)
             {
-                Destroy(gameObject);
+                // If this GameObject has other components attached, only destroy this duplicate component!
+                if (GetComponent<VehicleInteraction>() != null || GetComponent<CameraSetup>() != null || GetComponent<GameUIManager>() != null)
+                {
+                    Destroy(this);
+                }
+                else
+                {
+                    Destroy(gameObject);
+                }
                 return;
+            }
+        }
+
+        void OnEnable()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        void OnDisable()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (scene.name.Contains("MainMenu"))
+            {
+                // In main menu
+                if (currentState != GameState.Splash && currentState != GameState.Title)
+                {
+                    ChangeState(GameState.MainMenu);
+                }
+            }
+            else
+            {
+                // In race scene: ensure all race systems exist
+                EnsureRaceComponents();
+            }
+        }
+
+        public static void EnsureRaceComponents()
+        {
+            SceneLoader.EnsureLoaderExists();
+
+            if (UnityEngine.Object.FindAnyObjectByType<CountdownController>() == null)
+            {
+                GameObject cdObj = new GameObject("CountdownController");
+                cdObj.AddComponent<CountdownController>();
+            }
+
+            if (UnityEngine.Object.FindAnyObjectByType<PauseMenuUI>() == null)
+            {
+                GameObject pmObj = new GameObject("PauseMenuUI");
+                pmObj.AddComponent<PauseMenuUI>();
+            }
+
+            if (UnityEngine.Object.FindAnyObjectByType<ResultsScreenUI>() == null)
+            {
+                GameObject rsObj = new GameObject("ResultsScreenUI");
+                rsObj.AddComponent<ResultsScreenUI>();
+            }
+
+            if (UnityEngine.Object.FindAnyObjectByType<RaceManager>() == null)
+            {
+                GameObject rmObj = new GameObject("RaceManager");
+                rmObj.AddComponent<RaceManager>();
             }
         }
 
@@ -63,7 +127,14 @@ namespace NeonRush
             // Initialize based on current scene
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("MainMenu"))
             {
-                ChangeState(GameState.MainMenu);
+                if (currentState != GameState.Splash && currentState != GameState.Title)
+                {
+                    ChangeState(GameState.MainMenu);
+                }
+            }
+            else
+            {
+                EnsureRaceComponents();
             }
         }
 
@@ -73,6 +144,15 @@ namespace NeonRush
             if (currentState == GameState.Racing && isGameActive)
             {
                 raceTime += Time.deltaTime;
+            }
+
+            // Quick restart with R key during gameplay
+            if (currentState == GameState.Racing && GameInput.GetResetDown())
+            {
+                if (SceneLoader.Instance != null && !SceneLoader.Instance.IsLoading)
+                {
+                    SceneLoader.LoadRace();
+                }
             }
         }
 

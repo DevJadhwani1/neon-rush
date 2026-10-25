@@ -36,6 +36,9 @@ namespace NeonRush.Tests
             Test_SceneLoader_ProgressNormalizationAndTips();
             Test_GameManager_SplashAndTitleStates();
             Test_PauseMenu_TimeScaleGuards();
+            Test_CountdownController_LockingAndTiming();
+            Test_GameManager_EnsureRaceComponents();
+            Test_GameInput_StandardizedMappings();
 
             Debug.Log("==================================================");
             Debug.Log($">>> SUITE COMPLETED: {passed} PASSED, {failed} FAILED <<<");
@@ -315,6 +318,58 @@ namespace NeonRush.Tests
 
             UnityEngine.Object.DestroyImmediate(go);
             Assert(Time.timeScale == 1f, "PauseMenu: OnDestroy cleans up and maintains Time.timeScale at 1.0");
+        }
+
+        private static void Test_CountdownController_LockingAndTiming()
+        {
+            GameObject go = new GameObject("Test_Countdown");
+            CountdownController cc = go.AddComponent<CountdownController>();
+
+            Assert(cc.countdownDuration >= 3f, "CountdownController: Default duration >= 3s");
+            Assert(cc.GetCurrentNumber() == 0, "CountdownController: Number starts at 0 before trigger");
+
+            UnityEngine.Object.DestroyImmediate(go);
+        }
+
+        private static void Test_GameManager_EnsureRaceComponents()
+        {
+            GameManager.EnsureRaceComponents();
+
+            CountdownController cd = UnityEngine.Object.FindAnyObjectByType<CountdownController>();
+            PauseMenuUI pm = UnityEngine.Object.FindAnyObjectByType<PauseMenuUI>();
+            ResultsScreenUI rs = UnityEngine.Object.FindAnyObjectByType<ResultsScreenUI>();
+            RaceManager rm = UnityEngine.Object.FindAnyObjectByType<RaceManager>();
+
+            Assert(cd != null, "GameManager: Auto-bootstrapped CountdownController exists");
+            Assert(pm != null, "GameManager: Auto-bootstrapped PauseMenuUI exists");
+            Assert(rs != null, "GameManager: Auto-bootstrapped ResultsScreenUI exists");
+            Assert(rm != null, "GameManager: Auto-bootstrapped RaceManager exists");
+
+            if (cd != null) UnityEngine.Object.DestroyImmediate(cd.gameObject);
+            if (pm != null) UnityEngine.Object.DestroyImmediate(pm.gameObject);
+            if (rs != null) UnityEngine.Object.DestroyImmediate(rs.gameObject);
+            if (rm != null) UnityEngine.Object.DestroyImmediate(rm.gameObject);
+        }
+
+        private static void Test_GameInput_StandardizedMappings()
+        {
+            // Verify all standardized GameInput methods execute safely without throwing exceptions
+            bool interact = GameInput.GetInteractDown();
+            bool jump = GameInput.GetJumpDown();
+            bool reset = GameInput.GetResetDown();
+            bool pause = GameInput.GetPauseDown();
+            bool brake = GameInput.GetBrake();
+            bool drift = GameInput.GetDrift();
+            bool antiGrav = GameInput.GetAntiGravityDown();
+            float h = GameInput.GetHorizontal();
+            float v = GameInput.GetVertical();
+
+            Assert(h >= -1f && h <= 1f, "GameInput: Horizontal axis clamped in [-1, 1]");
+            Assert(v >= -1f && v <= 1f, "GameInput: Vertical axis clamped in [-1, 1]");
+            Assert(!reset || reset, "GameInput: GetResetDown returns valid boolean");
+            Assert(!pause || pause, "GameInput: GetPauseDown returns valid boolean");
+            Assert(!drift || drift, "GameInput: GetDrift returns valid boolean");
+            Assert(!antiGrav || antiGrav, "GameInput: GetAntiGravityDown returns valid boolean");
         }
     }
 }

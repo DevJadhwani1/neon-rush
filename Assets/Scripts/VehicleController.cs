@@ -131,12 +131,12 @@ public class VehicleController : MonoBehaviour
 
     void Update()
     {
-        // If destroyed or game is over, completely halt all player actions
-        if (isDestroyed || (GameManager.Instance != null && !GameManager.Instance.isGameActive))
+        // If destroyed, game inactive, or countdown active, halt driving inputs
+        if (isDestroyed || (GameManager.Instance != null && !GameManager.Instance.isGameActive) || CountdownController.IsCountingDown)
         {
             moveInput = 0f;
             turnInput = 0f;
-            isBraking = false;
+            isBraking = CountdownController.IsCountingDown;
             driftInput = false;
             return;
         }

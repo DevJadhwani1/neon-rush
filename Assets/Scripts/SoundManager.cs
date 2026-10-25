@@ -12,7 +12,7 @@ public class SoundManager : MonoBehaviour
         }
         else if (Instance != this)
         {
-            Destroy(gameObject);
+            Destroy(this);
         }
     }
 

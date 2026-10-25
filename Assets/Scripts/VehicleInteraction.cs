@@ -29,7 +29,7 @@ public class VehicleInteraction : MonoBehaviour
     }
 
     [Header("Start Configuration")]
-    public bool startInsideVehicle = false;
+    public bool startInsideVehicle = true;
 
     void Start()
     {

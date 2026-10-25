@@ -18,15 +18,26 @@ namespace NeonRush
         private Texture2D panelBgTex;
         private Texture2D dimBgTex;
 
+        void EnsureTextures()
+        {
+            if (dimBgTex == null)
+            {
+                dimBgTex = new Texture2D(1, 1);
+                dimBgTex.SetPixel(0, 0, new Color(0.02f, 0.03f, 0.06f, 0.92f));
+                dimBgTex.Apply();
+            }
+
+            if (panelBgTex == null)
+            {
+                panelBgTex = new Texture2D(1, 1);
+                panelBgTex.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.14f, 0.9f));
+                panelBgTex.Apply();
+            }
+        }
+
         void Start()
         {
-            dimBgTex = new Texture2D(1, 1);
-            dimBgTex.SetPixel(0, 0, new Color(0.02f, 0.03f, 0.06f, 0.92f));
-            dimBgTex.Apply();
-
-            panelBgTex = new Texture2D(1, 1);
-            panelBgTex.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.14f, 0.9f));
-            panelBgTex.Apply();
+            EnsureTextures();
 
             RaceManager raceManager = FindAnyObjectByType<RaceManager>();
             if (raceManager != null)
@@ -64,6 +75,7 @@ namespace NeonRush
             if (SceneLoader.Instance != null && SceneLoader.Instance.IsLoading) return;
 
             GUI.depth = -100;
+            EnsureTextures();
 
             if (titleStyle == null)
             {
@@ -179,6 +191,12 @@ namespace NeonRush
             int seconds = Mathf.FloorToInt(timeSeconds % 60f);
             int milliseconds = Mathf.FloorToInt((timeSeconds * 100f) % 100f);
             return string.Format("{0:00}:{1:00}.{2:00}", minutes, seconds, milliseconds);
+        }
+
+        void OnDestroy()
+        {
+            if (dimBgTex != null) { Destroy(dimBgTex); dimBgTex = null; }
+            if (panelBgTex != null) { Destroy(panelBgTex); panelBgTex = null; }
         }
     }
 }
