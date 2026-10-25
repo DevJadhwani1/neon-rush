@@ -1,11 +1,11 @@
-// Module: Checkpoint   Owner: Member 2   Purpose: Track checkpoint for lap counting, progression, and safe recovery anchoring
+// Module: Checkpoint   Owner: Member 2   Purpose: Track checkpoint for progression and safe recovery anchoring
 
 using UnityEngine;
 
 namespace NeonRush
 {
     /// <summary>
-    /// Checkpoint that racers pass through to count laps, sequence progression, and anchor safe track recovery.
+    /// Checkpoint that racers pass through to sequence progression and anchor safe track recovery.
     /// </summary>
     public class Checkpoint : MonoBehaviour
     {
@@ -53,6 +53,10 @@ namespace NeonRush
 
             // 1. Ship racer interaction
             ShipController ship = other.GetComponent<ShipController>() ?? other.GetComponentInParent<ShipController>();
+            if (ship == null && other.attachedRigidbody != null)
+            {
+                ship = other.attachedRigidbody.GetComponent<ShipController>();
+            }
             if (ship != null)
             {
                 if (raceManager != null)
@@ -64,6 +68,10 @@ namespace NeonRush
 
             // 2. Cyber vehicle racer interaction
             VehicleController vehicle = other.GetComponent<VehicleController>() ?? other.GetComponentInParent<VehicleController>();
+            if (vehicle == null && other.attachedRigidbody != null)
+            {
+                vehicle = other.attachedRigidbody.GetComponent<VehicleController>();
+            }
             if (vehicle != null)
             {
                 bool isLegitimateSequence = true;
@@ -86,7 +94,7 @@ namespace NeonRush
             }
         }
 
-        private void OnDrawGizmos()
+        private void OnDrawGizmosSelected()
         {
             Gizmos.color = isFinishLine ? Color.green : gizmoColor;
             BoxCollider box = GetComponent<BoxCollider>();

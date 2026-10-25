@@ -257,13 +257,13 @@ public class VehicleInteraction : MonoBehaviour
             if (driverSeat != null)
             {
                 player.transform.SetParent(driverSeat, false);
-                player.transform.localPosition = Vector3.zero;
+                player.transform.localPosition = new Vector3(0f, -500f, 0f);
                 player.transform.localRotation = Quaternion.identity;
             }
             else if (vehicle != null)
             {
                 player.transform.SetParent(vehicle.transform, false);
-                player.transform.localPosition = new Vector3(0f, 0.5f, 0.1f);
+                player.transform.localPosition = new Vector3(0f, -500f, 0f);
                 player.transform.localRotation = Quaternion.identity;
             }
 
@@ -279,6 +279,13 @@ public class VehicleInteraction : MonoBehaviour
                     }
                     r.enabled = false;
                 }
+            }
+
+            // Also disable any lights (e.g. HelmetLight) to prevent light gizmos and halos
+            Light[] allLights = player.GetComponentsInChildren<Light>(true);
+            foreach (var l in allLights)
+            {
+                if (l != null) l.enabled = false;
             }
         }
 
@@ -351,6 +358,13 @@ public class VehicleInteraction : MonoBehaviour
                 }
             }
             playerRendererStates.Clear();
+
+            // Re-enable player lights
+            Light[] allLights = player.GetComponentsInChildren<Light>(true);
+            foreach (var l in allLights)
+            {
+                if (l != null) l.enabled = true;
+            }
 
             // Re-enable player colliders and physics
             Collider[] allPlayerCols = player.GetComponentsInChildren<Collider>(true);

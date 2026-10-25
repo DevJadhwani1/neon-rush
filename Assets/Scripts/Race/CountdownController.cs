@@ -14,7 +14,9 @@ namespace NeonRush
 
         [Header("Countdown Settings")]
         public float countdownDuration = 4f; // 3 seconds + 1 for GO
+        public float countdownTime { get => countdownDuration; set => countdownDuration = value; }
         public bool countdownActive = false;
+        public bool IsCountdownActive => countdownActive;
 
         private int currentCountdownNumber = 0;
         private string countdownText = "";
@@ -28,7 +30,7 @@ namespace NeonRush
 
         void Awake()
         {
-            if (instance == null) instance = this;
+            if (instance == null || (Object)instance == null) instance = this;
             else if (instance != this) Destroy(this);
         }
 
@@ -42,15 +44,15 @@ namespace NeonRush
 
         public void StartCountdown()
         {
+            instance = this;
             if (countdownActive) return;
             countdownActive = true;
             hasStartedSequence = true;
 
             // Notify vehicles with PerfectStartSystem
-            GameObject[] vehicles = GameObject.FindGameObjectsWithTag("Vehicle");
-            foreach (GameObject vehicle in vehicles)
+            var perfectStarts = FindObjectsByType<PerfectStartSystem>();
+            foreach (var perfectStart in perfectStarts)
             {
-                PerfectStartSystem perfectStart = vehicle.GetComponent<PerfectStartSystem>();
                 if (perfectStart != null)
                 {
                     perfectStart.StartCountdown();
@@ -63,13 +65,14 @@ namespace NeonRush
             StartCoroutine(CountdownSequence());
         }
 
-        private void LockPlayerVehicle(bool locked)
+        public void LockPlayerVehicle(bool locked)
         {
             var vcs = FindObjectsByType<VehicleController>();
             foreach (var vc in vcs)
             {
                 if (vc.isPlayerInVehicle || vc.CompareTag("Player") || vc.name.Contains("Player") || vc.name == "Vehicle")
                 {
+                    vc.ResetDrivingState();
                     Rigidbody rb = vc.GetComponent<Rigidbody>();
                     if (rb != null && locked)
                     {
@@ -122,6 +125,10 @@ namespace NeonRush
                 {
                     GameManager.Instance.ChangeState(GameState.Racing);
                 }
+
+                // Unlock player vehicle immediately at GO!
+                LockPlayerVehicle(false);
+                countdownActive = false;
 
                 yield return new WaitForSecondsRealtime(1.2f);
             }

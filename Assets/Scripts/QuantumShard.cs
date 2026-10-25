@@ -8,10 +8,15 @@ public class QuantumShard : MonoBehaviour
     public float bobAmplitude = 0.35f;
     public int scoreValue = 50;
 
+    [Header("Health Restoration")]
+    public int healthRestoreAmount = 25;
+
     private Vector3 initialPos;
     private float timeOffset;
     private bool isCollected = false;
     private Light shardLight;
+
+    public bool IsCollected => isCollected;
 
     void Awake()
     {
@@ -65,20 +70,77 @@ public class QuantumShard : MonoBehaviour
     {
         if (isCollected) return;
 
-        bool isPlayer = other.CompareTag("Player") ||
-                        other.gameObject.name.Contains("Vehicle") ||
-                        other.gameObject.name.Contains("Player") ||
-                        other.GetComponentInParent<VehicleController>() != null;
+        // Do not restore health or collect after game over or race completion
+        if (GameManager.Instance != null)
+        {
+            if (GameManager.Instance.currentState == GameState.GameOver ||
+                GameManager.Instance.currentState == GameState.Finish ||
+                GameManager.Instance.currentState == GameState.Results ||
+                GameManager.Instance.hasWon ||
+                !GameManager.Instance.isGameActive)
+            {
+                return;
+            }
+        }
 
-        if (isPlayer)
+        VehicleController vc = other.GetComponent<VehicleController>() ?? other.GetComponentInParent<VehicleController>();
+        if (vc == null && (other.name.Contains("Vehicle") || other.transform.root.name.Contains("Vehicle")))
+        {
+            vc = other.transform.root.GetComponentInChildren<VehicleController>();
+        }
+
+        PlayerHealth ph = other.GetComponent<PlayerHealth>() ?? other.GetComponentInParent<PlayerHealth>();
+
+        if (vc != null)
+        {
+            Collect(vc, null);
+        }
+        else if (ph != null)
+        {
+            Collect(null, ph);
+        }
+        else if (other.CompareTag("Player") || other.name.Contains("Player"))
         {
             Collect();
         }
     }
 
-    void Collect()
+    public void Collect()
     {
+        VehicleController vc = FindAnyObjectByType<VehicleController>();
+        PlayerHealth ph = (vc == null) ? FindAnyObjectByType<PlayerHealth>() : null;
+        Collect(vc, ph);
+    }
+
+    public void Collect(VehicleController vc, PlayerHealth ph)
+    {
+        if (isCollected) return;
         isCollected = true;
+
+        // Immediately disable collider so duplicate triggers within the frame are rejected
+        Collider c = GetComponent<Collider>();
+        if (c != null) c.enabled = false;
+
+        // Authoritative health restoration capped at 100
+        if (vc != null)
+        {
+            if (!vc.isDestroyed && vc.health > 0)
+            {
+                vc.RestoreHealth(healthRestoreAmount);
+                var vh = vc.GetComponent<VehicleHealth>();
+                if (vh != null)
+                {
+                    vh.currentArmor = Mathf.Clamp(vh.currentArmor + healthRestoreAmount, 0, vh.maxArmor);
+                }
+            }
+        }
+        else if (ph != null)
+        {
+            if (ph.health > 0)
+            {
+                ph.RestoreHealth(healthRestoreAmount);
+            }
+        }
 
         if (GameManager.Instance != null)
         {

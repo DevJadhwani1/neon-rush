@@ -3,7 +3,7 @@ using UnityEngine;
 public class PulsingLaserGate : MonoBehaviour
 {
     public float cycleDuration = 3.0f; // 1.5s ON, 1.5s OFF
-    public int damageAmount = 25;
+    public int damageAmount = 5;
 
     private float timer = 0f;
     private bool isHazardActive = true;
@@ -20,9 +20,11 @@ public class PulsingLaserGate : MonoBehaviour
         beamRenderer = GetComponent<MeshRenderer>();
         gateLight = GetComponentInChildren<Light>();
 
+        hazardMat = Resources.Load<Material>("Materials/HazardMaterial") ?? Resources.Load<Material>("HazardMaterial");
+        clearMat = Resources.Load<Material>("Materials/NeonCyanGlow") ?? Resources.Load<Material>("NeonCyanGlow");
 #if UNITY_EDITOR
-        hazardMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/HazardMaterial.mat");
-        clearMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/NeonCyanGlow.mat");
+        if (hazardMat == null) hazardMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/HazardMaterial.mat");
+        if (clearMat == null) clearMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/NeonCyanGlow.mat");
 #endif
     }
 

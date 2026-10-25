@@ -26,20 +26,37 @@ public class CarVisuals : MonoBehaviour
 
     void LoadMaterials()
     {
-        bodyMat = Resources.Load<Material>("VehicleBodyMaterial") ?? LoadMatFromPath("Assets/Materials/VehicleBodyMaterial.mat");
-        glassMat = LoadMatFromPath("Assets/Materials/GlassMaterial.mat");
-        metalMat = LoadMatFromPath("Assets/Materials/DarkMetalMaterial.mat");
-        cyanGlowMat = LoadMatFromPath("Assets/Materials/NeonCyanGlow.mat");
-        magentaGlowMat = LoadMatFromPath("Assets/Materials/NeonMagentaGlow.mat");
+        bodyMat = LoadMat("VehicleBodyMaterial", new Color(0.1f, 0.55f, 0.95f), new Color(0f, 0.3f, 0.6f), 0.7f, 0.8f);
+        glassMat = LoadMat("GlassMaterial", new Color(0.1f, 0.2f, 0.3f, 0.6f), Color.black, 0.9f, 0.95f);
+        metalMat = LoadMat("DarkMetalMaterial", new Color(0.15f, 0.15f, 0.18f), Color.black, 0.85f, 0.7f);
+        cyanGlowMat = LoadMat("NeonCyanGlow", new Color(0f, 0.95f, 1f), new Color(0f, 0.95f, 1f) * 2.5f);
+        magentaGlowMat = LoadMat("NeonMagentaGlow", new Color(1f, 0.05f, 0.6f), new Color(1f, 0.05f, 0.6f) * 2.5f);
     }
 
-    Material LoadMatFromPath(string path)
+    Material LoadMat(string matName, Color fallbackColor, Color fallbackEmission, float metallic = 0.5f, float smoothness = 0.5f)
     {
+        Material m = Resources.Load<Material>($"Materials/{matName}") ?? Resources.Load<Material>(matName);
 #if UNITY_EDITOR
-        return UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
-#else
-        return null;
+        if (m == null) m = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>($"Assets/Materials/{matName}.mat");
 #endif
+        if (m == null)
+        {
+            Shader s = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+            if (s != null)
+            {
+                m = new Material(s);
+                m.name = matName;
+                m.color = fallbackColor;
+                m.SetFloat("_Metallic", metallic);
+                m.SetFloat("_Glossiness", smoothness);
+                if (fallbackEmission.maxColorComponent > 0.01f)
+                {
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", fallbackEmission);
+                }
+            }
+        }
+        return m;
     }
 
     void SafeDestroy(Object obj)

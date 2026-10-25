@@ -6,7 +6,7 @@ public class EnemyController : MonoBehaviour
     [Header("Enemy Attributes")]
     public string enemyName = "CyberInterceptor_Drone";
     public int health = 50;
-    public int damageAmount = 25;
+    public int damageAmount = 5;
     public float moveSpeed = 5.0f;
     public float detectionRadius = 25.0f;
     public float attackDistance = 1.8f;
@@ -82,13 +82,23 @@ public class EnemyController : MonoBehaviour
         scannerLight.intensity = 4f;
 
         // Apply hazard material if available
-        hazardMat = Resources.Load<Material>("HazardMaterial");
+        hazardMat = Resources.Load<Material>("Materials/HazardMaterial") ?? Resources.Load<Material>("HazardMaterial");
 #if UNITY_EDITOR
         if (hazardMat == null)
         {
             hazardMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/HazardMaterial.mat");
         }
 #endif
+        if (hazardMat == null)
+        {
+            Shader s = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+            if (s != null)
+            {
+                hazardMat = new Material(s) { name = "HazardMaterial", color = new Color(1f, 0.2f, 0.2f) };
+                hazardMat.EnableKeyword("_EMISSION");
+                hazardMat.SetColor("_EmissionColor", new Color(1f, 0.1f, 0.1f) * 1.5f);
+            }
+        }
         MeshRenderer mr = GetComponent<MeshRenderer>();
         if (mr != null && hazardMat != null)
         {

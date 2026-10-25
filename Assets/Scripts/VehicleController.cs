@@ -12,6 +12,10 @@ public class VehicleController : MonoBehaviour
     public float downforce = 22f; // Increased from 16 for more grip
     public float uprightTorque = 95f; // Increased from 55 - much stronger stabilization
 
+    [Header("Braking & Reverse Behavior")]
+    public float reverseThreshold = 1.2f; // Low-speed threshold before S engages reverse
+    public float reverseAcceleration = 35f; // Controlled smooth reverse acceleration
+
     [Header("Suspension Cushion (Prevents Sinking Under Road)")]
     public float rideHeight = 0.65f;
     public float suspensionForce = 65f;
@@ -37,10 +41,14 @@ public class VehicleController : MonoBehaviour
     [Header("Health & Damage")]
     public int health = 100;
     public int maxHealth = 100;
-    public int hazardDamage = 25;
+    public int collisionDamage = 5;
+    public int hazardDamage = 5;
+    public int policeRamDamage = 20;
     public float invulnerabilityDuration = 1.0f;
     private float invulnerabilityTimer = 0f;
+    public float spawnGraceTimer = 3.0f; // Initial start / drop damage protection
     public bool isDestroyed = false;
+    public bool IsInvulnerable => (invulnerabilityTimer > 0f || spawnGraceTimer > 0f || isRecovering);
 
     [Header("Player Control State")]
     public bool isPlayerInVehicle = false;
@@ -66,10 +74,29 @@ public class VehicleController : MonoBehaviour
     public float CurrentSpeed => (rb != null) ? Vector3.Dot(rb.linearVelocity, transform.forward) : 0f;
     public bool IsAntiGravityReady => (!isAntiGravityActive && antiGravityCharges > 0);
 
+    public void ResetDrivingState()
+    {
+        if (rb == null) rb = GetComponent<Rigidbody>();
+        moveInput = 0f;
+        turnInput = 0f;
+        isBraking = false;
+        driftInput = false;
+        isDrifting = false;
+        driftTimer = 0f;
+        driftCharge = 0f;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+    }
+
     void Awake()
     {
         health = maxHealth;
         isDestroyed = false;
+        spawnGraceTimer = CountdownController.IsCountingDown ? 3.0f : 0f;
+        invulnerabilityTimer = 0f;
         antiGravityCharges = 1; // Exactly 1 FREE charge at the start
         antiGravityDuration = 3.5f; // Exactly 3.5 seconds time limit
 
@@ -96,15 +123,19 @@ public class VehicleController : MonoBehaviour
         }
 
         SetupUnderglow();
+        ResetDrivingState();
     }
 
     void Start()
     {
         health = maxHealth;
         isDestroyed = false;
+        spawnGraceTimer = CountdownController.IsCountingDown ? 3.0f : 0f;
+        invulnerabilityTimer = 0f;
         antiGravityCharges = 1; // Strictly 1 free charge
         antiGravityDuration = 3.5f; // Strictly 3.5s duration
         this.enabled = true;
+        ResetDrivingState();
 
         Transform oldSmoke = transform.Find("WreckageSmoke");
         if (oldSmoke != null) Destroy(oldSmoke.gameObject);
@@ -138,22 +169,20 @@ public class VehicleController : MonoBehaviour
 
     void Update()
     {
-        // If destroyed, game inactive, or countdown active, halt driving inputs
-        if (isDestroyed || (GameManager.Instance != null && !GameManager.Instance.isGameActive) || CountdownController.IsCountingDown)
+        // If destroyed, game inactive, countdown active, or race finished, halt driving inputs and apply brakes
+        bool isRaceOver = (RaceManager.Instance != null && RaceManager.Instance.IsRaceFinished) || 
+                          (GameManager.Instance != null && (GameManager.Instance.currentState == GameState.Finish || GameManager.Instance.currentState == GameState.Results || GameManager.Instance.currentState == GameState.GameOver));
+
+        bool disableInputs = isDestroyed || (GameManager.Instance != null && !GameManager.Instance.isGameActive) || isRaceOver || CountdownController.IsCountingDown;
+
+        if (disableInputs)
         {
             moveInput = 0f;
             turnInput = 0f;
-            isBraking = CountdownController.IsCountingDown;
+            isBraking = false;
             driftInput = false;
-            return;
         }
-
-        if (invulnerabilityTimer > 0f)
-        {
-            invulnerabilityTimer -= Time.deltaTime;
-        }
-
-        if (isPlayerInVehicle)
+        else if (isPlayerInVehicle)
         {
             GetDrivingInput();
         }
@@ -173,15 +202,26 @@ public class VehicleController : MonoBehaviour
             recoveryCooldown -= Time.deltaTime;
         }
 
+        if (spawnGraceTimer > 0f)
+        {
+            spawnGraceTimer -= Time.deltaTime;
+        }
+
+        if (invulnerabilityTimer > 0f)
+        {
+            invulnerabilityTimer -= Time.deltaTime;
+        }
+
         // Fall Protection & Out-of-Bounds Detection:
-        // Genuine fall below track or off high skyway deck
+        // Genuine fall below track or off high skyway deck in gap (Z = 225 to 265)
         bool isOutOfBounds = transform.position.y < -3.5f;
-        if (transform.position.z >= 180f && transform.position.z <= 295f && transform.position.y < 4.0f)
+        if (transform.position.z >= 225f && transform.position.z <= 265f && transform.position.y < 2.0f)
         {
             isOutOfBounds = true;
         }
 
-        if (isOutOfBounds && !isRecovering && recoveryCooldown <= 0f)
+        bool isRaceFinished = (GameManager.Instance != null && (GameManager.Instance.hasWon || GameManager.Instance.currentState == GameState.Finish || GameManager.Instance.currentState == GameState.Results));
+        if (isOutOfBounds && !isRecovering && recoveryCooldown <= 0f && !isRaceFinished)
         {
             RecoverToCheckpoint();
         }
@@ -189,7 +229,24 @@ public class VehicleController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isDestroyed || (GameManager.Instance != null && !GameManager.Instance.isGameActive) || rb == null)
+        if (rb == null) rb = GetComponent<Rigidbody>();
+        if (isDestroyed || rb == null)
+        {
+            return;
+        }
+
+        // During countdown, vehicle must remain completely stationary at the starting position
+        if (CountdownController.IsCountingDown)
+        {
+            if (rb.linearVelocity.sqrMagnitude > 0.0001f || rb.angularVelocity.sqrMagnitude > 0.0001f)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            return;
+        }
+
+        if (GameManager.Instance != null && !GameManager.Instance.isGameActive)
         {
             return;
         }
@@ -352,31 +409,87 @@ public class VehicleController : MonoBehaviour
 
     void ApplyDrive()
     {
+        if (rb == null) rb = GetComponent<Rigidbody>();
+        if (rb == null) return;
+
         float currentMax = isAntiGravityActive ? antiGravityMaxSpeed : maxSpeed;
         float forwardVelocity = Vector3.Dot(rb.linearVelocity, transform.forward);
 
-        if (isBraking && !isDrifting)
+        bool wantsForward = (moveInput > 0.05f);
+        bool wantsReverse = (moveInput < -0.05f);
+        bool wantsBrakeOnly = (isBraking && !wantsReverse);
+
+        // Prevent forward and reverse acceleration from being applied simultaneously
+        if (wantsForward && wantsReverse)
         {
-            Vector3 brakeForceVector = -rb.linearVelocity.normalized * brakeForce;
-            rb.AddForce(brakeForceVector, ForceMode.Acceleration);
+            wantsForward = false;
+            wantsReverse = false;
         }
-        else if (Mathf.Abs(moveInput) > 0.05f)
+
+        if (wantsReverse)
         {
-            if (moveInput > 0 && forwardVelocity < currentMax)
+            // S key pressed:
+            // 1. Moving forward faster than low-speed threshold -> Smoothly Brake forward motion
+            if (forwardVelocity > reverseThreshold)
             {
-                Vector3 accelForce = transform.forward * moveInput * acceleration;
-                rb.AddForce(accelForce, ForceMode.Acceleration);
+                float currentBrakePower = isDrifting ? (brakeForce * 0.5f) : brakeForce;
+                float maxDecel = forwardVelocity / Time.fixedDeltaTime;
+                float appliedBrake = Mathf.Min(currentBrakePower, maxDecel);
+                rb.AddForce(-transform.forward * appliedBrake, ForceMode.Acceleration);
             }
-            else if (moveInput < 0 && forwardVelocity > -reverseSpeed)
+            // 2. Stopped or moving backward/slowly -> Smoothly engage Reverse up to reverseSpeed
+            else
             {
-                Vector3 reverseForce = transform.forward * moveInput * acceleration * 0.75f;
-                rb.AddForce(reverseForce, ForceMode.Acceleration);
+                if (forwardVelocity > -reverseSpeed)
+                {
+                    float revInputMag = Mathf.Abs(moveInput);
+                    Vector3 reverseForceVector = -transform.forward * (reverseAcceleration * revInputMag);
+                    rb.AddForce(reverseForceVector, ForceMode.Acceleration);
+                }
+            }
+        }
+        else if (wantsForward)
+        {
+            // W key pressed:
+            // 3. Moving backward (reversing) faster than threshold -> Smoothly Brake reverse motion
+            if (forwardVelocity < -reverseThreshold)
+            {
+                float maxDecel = (-forwardVelocity) / Time.fixedDeltaTime;
+                float appliedBrake = Mathf.Min(brakeForce, maxDecel);
+                rb.AddForce(transform.forward * appliedBrake, ForceMode.Acceleration);
+            }
+            // 4. Stopped or moving forward -> Accelerate forward up to currentMax
+            else
+            {
+                if (forwardVelocity < currentMax)
+                {
+                    Vector3 accelForce = transform.forward * (moveInput * acceleration);
+                    rb.AddForce(accelForce, ForceMode.Acceleration);
+                }
+            }
+        }
+        else if (wantsBrakeOnly)
+        {
+            // Dedicated brake / handbrake active without reverse input:
+            // Smoothly oppose existing motion only; never accelerate or reverse from standstill
+            if (forwardVelocity > 0.05f)
+            {
+                float maxDecel = forwardVelocity / Time.fixedDeltaTime;
+                float appliedBrake = Mathf.Min(brakeForce, maxDecel);
+                rb.AddForce(-transform.forward * appliedBrake, ForceMode.Acceleration);
+            }
+            else if (forwardVelocity < -0.05f)
+            {
+                float maxDecel = (-forwardVelocity) / Time.fixedDeltaTime;
+                float appliedBrake = Mathf.Min(brakeForce, maxDecel);
+                rb.AddForce(transform.forward * appliedBrake, ForceMode.Acceleration);
             }
         }
 
+        // Lateral grip: cancel sideways drift while preserving drifting mechanics
         Vector3 rightVelocity = Vector3.Dot(rb.linearVelocity, transform.right) * transform.right;
         float gripFactor = isDrifting ? 0.45f : 0.90f;
-        rb.linearVelocity -= rightVelocity * gripFactor * Time.fixedDeltaTime * 10f;
+        rb.linearVelocity -= rightVelocity * (gripFactor * Time.fixedDeltaTime * 10f);
     }
 
     void ApplySteering()
@@ -549,6 +662,12 @@ public class VehicleController : MonoBehaviour
 
         invulnerabilityTimer = 1.5f;
 
+        var cam = FindAnyObjectByType<SimpleCameraFollow>();
+        if (cam != null)
+        {
+            cam.SnapToTarget();
+        }
+
         if (GameUIManager.Instance != null)
         {
             GameUIManager.Instance.ShowNotification("⚠️ FELL OFF TRACK — SAFELY RECOVERED!", 2.5f);
@@ -597,19 +716,73 @@ public class VehicleController : MonoBehaviour
     {
         if (isDestroyed) return;
 
-        if (collision.gameObject.CompareTag("Hazard") || collision.gameObject.name.Contains("Hazard"))
+        // Protection during initial start/drop, countdown, or active invulnerability window
+        if (spawnGraceTimer > 0f || CountdownController.IsCountingDown || invulnerabilityTimer > 0f)
+        {
+            return;
+        }
+
+        // Check if colliding with Police interceptor
+        bool isPolice = collision.gameObject.name.Contains("Police") || 
+                        collision.gameObject.CompareTag("Enemy") ||
+                        collision.gameObject.GetComponent<PoliceVehicle>() != null ||
+                        collision.gameObject.GetComponentInParent<PoliceVehicle>() != null;
+
+        if (isPolice)
         {
             if (isAntiGravityActive)
             {
-                Debug.Log("Anti-Gravity protected vehicle from hazard damage!");
+                Debug.Log("Anti-Gravity protected vehicle from police ram!");
                 return;
             }
 
-            if (invulnerabilityTimer <= 0f)
+            TakeDamage(policeRamDamage);
+            invulnerabilityTimer = invulnerabilityDuration;
+            return;
+        }
+
+        // Ignore ground road / floor / track / boost pads / checkpoint triggers / runway / slabs / terrain
+        string colName = collision.gameObject.name.ToLower();
+        string colTag = collision.gameObject.tag;
+        if (colName.Contains("road") || colName.Contains("floor") || colName.Contains("slab") || 
+            colName.Contains("track") || colName.Contains("ground") || colName.Contains("terrain") ||
+            colName.Contains("runway") || colName.Contains("grid") || colName.Contains("boostpad") || 
+            colName.Contains("checkpoint") || colName.Contains("surface") || colTag == "Finish")
+        {
+            return;
+        }
+
+        // Landing / downward contact detection: if contact surface normal faces upward, it is a ground landing
+        if (collision.contactCount > 0)
+        {
+            ContactPoint contact = collision.GetContact(0);
+            if (contact.normal.y > 0.55f)
             {
-                TakeDamage(hazardDamage);
-                invulnerabilityTimer = invulnerabilityDuration;
+                // Surface is horizontal ground beneath the vehicle (landing/driving) - NEVER damage
+                return;
             }
+        }
+
+        bool isHazardOrObstacle = collision.gameObject.CompareTag("Hazard") ||
+                                  collision.gameObject.name.Contains("Hazard") ||
+                                  collision.gameObject.name.Contains("Barrier") ||
+                                  collision.gameObject.name.Contains("Wall") ||
+                                  collision.gameObject.name.Contains("Pillar") ||
+                                  collision.gameObject.name.Contains("Rail") ||
+                                  collision.gameObject.name.Contains("Gate") ||
+                                  collision.gameObject.name.Contains("Obstacle");
+
+        // When colliding with barriers, walls, hazards, or track obstacles, reduce 5 health
+        if (isHazardOrObstacle || (collision.relativeVelocity.magnitude > 2.5f && collision.contacts.Length > 0 && collision.contacts[0].normal.y < 0.5f))
+        {
+            if (isAntiGravityActive)
+            {
+                Debug.Log("Anti-Gravity protected vehicle from collision damage!");
+                return;
+            }
+
+            TakeDamage(collisionDamage);
+            invulnerabilityTimer = invulnerabilityDuration;
         }
     }
 
@@ -707,14 +880,15 @@ public class VehicleController : MonoBehaviour
         Collider sc = smoke.GetComponent<Collider>();
         if (sc != null) Destroy(sc);
 
+        Material darkMat = Resources.Load<Material>("Materials/DarkMetalMaterial") ?? Resources.Load<Material>("DarkMetalMaterial");
 #if UNITY_EDITOR
-        Material darkMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DarkMetalMaterial.mat");
+        if (darkMat == null) darkMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DarkMetalMaterial.mat");
+#endif
         if (darkMat != null)
         {
             MeshRenderer mr = smoke.GetComponent<MeshRenderer>();
             if (mr != null) mr.sharedMaterial = darkMat;
         }
-#endif
 
         if (underglowLight != null)
         {

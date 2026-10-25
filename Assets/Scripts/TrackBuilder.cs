@@ -12,18 +12,20 @@ public class TrackBuilder : MonoBehaviour
 
     void Awake()
     {
+        transform.position = Vector3.zero;
+        transform.rotation = Quaternion.identity;
         LoadMaterials();
         BuildFullCircuit();
     }
 
     void LoadMaterials()
     {
-        trackMat = LoadMatFromPath("Assets/Materials/TrackMaterial.mat");
-        barrierMat = LoadMatFromPath("Assets/Materials/BarrierNeonMaterial.mat");
-        hazardMat = LoadMatFromPath("Assets/Materials/HazardMaterial.mat");
-        boostMat = LoadMatFromPath("Assets/Materials/BoostPadMaterial.mat");
-        cyanGlowMat = LoadMatFromPath("Assets/Materials/NeonCyanGlow.mat");
-        magentaGlowMat = LoadMatFromPath("Assets/Materials/NeonMagentaGlow.mat");
+        trackMat = LoadMat("TrackMaterial", new Color(0.06f, 0.08f, 0.12f), Color.black, 0.2f, 0.3f);
+        barrierMat = LoadMat("BarrierNeonMaterial", new Color(0f, 0.85f, 1f), new Color(0f, 0.85f, 1f) * 1.5f);
+        hazardMat = LoadMat("HazardMaterial", new Color(1f, 0.2f, 0.1f), new Color(1f, 0.2f, 0.1f) * 2f);
+        boostMat = LoadMat("BoostPadMaterial", new Color(1f, 0.85f, 0f), new Color(1f, 0.85f, 0f) * 2f);
+        cyanGlowMat = LoadMat("NeonCyanGlow", new Color(0f, 0.95f, 1f), new Color(0f, 0.95f, 1f) * 2.5f);
+        magentaGlowMat = LoadMat("NeonMagentaGlow", new Color(1f, 0.1f, 0.85f), new Color(1f, 0.1f, 0.85f) * 2.5f);
 
         bouncePhysMat = new PhysicsMaterial("BarrierBounce")
         {
@@ -35,13 +37,30 @@ public class TrackBuilder : MonoBehaviour
         };
     }
 
-    Material LoadMatFromPath(string path)
+    Material LoadMat(string matName, Color fallbackColor, Color fallbackEmission, float metallic = 0.5f, float smoothness = 0.5f)
     {
+        Material m = Resources.Load<Material>($"Materials/{matName}") ?? Resources.Load<Material>(matName);
 #if UNITY_EDITOR
-        return UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
-#else
-        return null;
+        if (m == null) m = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>($"Assets/Materials/{matName}.mat");
 #endif
+        if (m == null)
+        {
+            Shader s = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+            if (s != null)
+            {
+                m = new Material(s);
+                m.name = matName;
+                m.color = fallbackColor;
+                m.SetFloat("_Metallic", metallic);
+                m.SetFloat("_Glossiness", smoothness);
+                if (fallbackEmission.maxColorComponent > 0.01f)
+                {
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", fallbackEmission);
+                }
+            }
+        }
+        return m;
     }
 
     void SafeDestroy(Object obj)
@@ -83,7 +102,7 @@ public class TrackBuilder : MonoBehaviour
         CreateStartGantry(root, new Vector3(0f, 0f, -5f));
 
         // CHECKPOINT 0: Start Gantry
-        CreateCheckpointGate(root, "Checkpoint_00", 0, false, new Vector3(0f, 0f, 0f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 0f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_00", 0, false, new Vector3(0f, 0f, 0f), new Vector3(24f, 15f, 6f), new Vector3(0f, 0.5f, 0f), Quaternion.identity);
 
         // Straightaway to Fork
         CreateRoadSlab(root, "Sec1_Straight", new Vector3(0f, -0.5f, 20f), new Vector3(18f, 2f, 32f));
@@ -100,7 +119,7 @@ public class TrackBuilder : MonoBehaviour
         CreateEnergyZone(root, new Vector3(6.5f, 1.8f, 48f));
 
         // CHECKPOINT 1: Pre-Fork
-        CreateCheckpointGate(root, "Checkpoint_01", 1, false, new Vector3(0f, 0f, 35f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 35f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_01", 1, false, new Vector3(0f, 0f, 35f), new Vector3(24f, 15f, 6f), new Vector3(0f, 0.5f, 35f), Quaternion.identity);
 
         // Split Road Fork (Z = 35 to 65): Left Lane (Underpass), Right Lane (Bypass)
         CreateRoadSlab(root, "Fork_Left_Lane", new Vector3(-6.5f, -0.5f, 50f), new Vector3(8f, 2f, 30f));
@@ -117,7 +136,7 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(6.5f, 1.5f, 58f));
 
         // CHECKPOINT 2: Fork Exit
-        CreateCheckpointGate(root, "Checkpoint_02", 2, false, new Vector3(0f, 0f, 65f), new Vector3(24f, 8f, 4f), new Vector3(0f, 0.5f, 65f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_02", 2, false, new Vector3(0f, 0f, 65f), new Vector3(26f, 15f, 6f), new Vector3(0f, 0.5f, 65f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 2: DOUBLE HAIRPIN CHICANE & DRIFT CANYON (Z = 65 to 175)
@@ -151,7 +170,7 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(26f, 1.5f, 115f));
 
         // CHECKPOINT 3: Chicane Straight
-        CreateCheckpointGate(root, "Checkpoint_03", 3, false, new Vector3(26f, 0f, 115f), new Vector3(20f, 8f, 4f), new Vector3(26f, 0.5f, 115f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_03", 3, false, new Vector3(26f, 0f, 115f), new Vector3(24f, 15f, 6f), new Vector3(26f, 0.5f, 115f), Quaternion.identity);
 
         // Turn 2 Warning Billboard (Turn Left!)
         CreateTurnChevronSign(root, new Vector3(32f, 1.5f, 126f), -45f, false);
@@ -177,7 +196,7 @@ public class TrackBuilder : MonoBehaviour
         CreateGuardRail(root, "Rail_Exit_R", new Vector3(9f, 1.5f, 172f), new Vector3(0.6f, 3.0f, 18f));
 
         // CHECKPOINT 4: Chicane Exit
-        CreateCheckpointGate(root, "Checkpoint_04", 4, false, new Vector3(0f, 0f, 172f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 172f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_04", 4, false, new Vector3(0f, 0f, 172f), new Vector3(24f, 15f, 6f), new Vector3(0f, 0.5f, 172f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 3: HIGH-ALTITUDE SKY SKYWAY & SUPERSONIC GAP JUMP (Z = 175 to 295)
@@ -195,7 +214,7 @@ public class TrackBuilder : MonoBehaviour
         CreateBoostPad(root, new Vector3(0f, 11.52f, 216f), 32f);
 
         // CHECKPOINT 5: Sky Launch Deck
-        CreateCheckpointGate(root, "Checkpoint_05", 5, false, new Vector3(0f, 10.5f, 215f), new Vector3(18f, 8f, 4f), new Vector3(0f, 11.5f, 215f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_05", 5, false, new Vector3(0f, 10.5f, 215f), new Vector3(24f, 22f, 8f), new Vector3(0f, 11.5f, 215f), Quaternion.identity);
 
         // --- MEGA SKY GAP (Z = 223 to 265, Gap = 42m!) ---
         // Laser pit hazard underneath
@@ -217,7 +236,7 @@ public class TrackBuilder : MonoBehaviour
         CreateGuardRail(root, "Rail_Land_R", new Vector3(10f, 12.5f, 280f), new Vector3(0.6f, 3.2f, 32f));
 
         // CHECKPOINT 6: Sky Landing Deck
-        CreateCheckpointGate(root, "Checkpoint_06", 6, false, new Vector3(0f, 10.5f, 280f), new Vector3(22f, 8f, 4f), new Vector3(0f, 11.5f, 280f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_06", 6, false, new Vector3(0f, 10.5f, 280f), new Vector3(24f, 22f, 8f), new Vector3(0f, 11.5f, 280f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 4: DESCENDING CORKSCREW & POLICE CYBER-GAUNTLET (Z = 295 to 420)
@@ -234,7 +253,7 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(4f, 1.5f, 335f));
 
         // CHECKPOINT 7: Gauntlet Entry
-        CreateCheckpointGate(root, "Checkpoint_07", 7, false, new Vector3(0f, 0f, 350f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 350f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_07", 7, false, new Vector3(0f, 0f, 350f), new Vector3(24f, 15f, 6f), new Vector3(0f, 0.5f, 350f), Quaternion.identity);
 
         // The Cyber-Gauntlet Straight (Z = 350 to 420, X = 0)
         CreateRoadSlab(root, "Gauntlet_Straight", new Vector3(0f, -0.5f, 385f), new Vector3(18f, 2f, 72f));
@@ -258,7 +277,7 @@ public class TrackBuilder : MonoBehaviour
         CreateShard(root, new Vector3(4f, 1.5f, 412f));
 
         // CHECKPOINT 8: Gauntlet Exit / Slalom
-        CreateCheckpointGate(root, "Checkpoint_08", 8, false, new Vector3(0f, 0f, 420f), new Vector3(20f, 8f, 4f), new Vector3(0f, 0.5f, 420f), Quaternion.identity);
+        CreateCheckpointGate(root, "Checkpoint_08", 8, false, new Vector3(0f, 0f, 420f), new Vector3(24f, 15f, 6f), new Vector3(0f, 0.5f, 420f), Quaternion.identity);
 
         // =========================================================================
         // SECTOR 5: SLALOM S-CURVES, TRIPLE BOOST FINALE & COLOSSEUM ARCH (Z = 420 to 520)
@@ -275,10 +294,12 @@ public class TrackBuilder : MonoBehaviour
         CreateGuardRail(root, "Rail_Slalom2_R", new Vector3(8f, 1.5f, 455f), new Vector3(0.6f, 3.0f, 22f), 16f);
         CreateShard(root, new Vector3(0f, 1.5f, 455f));
 
-        // Triple Boost Drag Runway (Z = 465 to 520, X = 0)
-        CreateRoadSlab(root, "FinalRunway", new Vector3(0f, -0.5f, 495f), new Vector3(20f, 2f, 62f));
-        CreateGuardRail(root, "Rail_Run_L", new Vector3(-10f, 1.5f, 495f), new Vector3(0.6f, 3.0f, 62f));
-        CreateGuardRail(root, "Rail_Run_R", new Vector3(10f, 1.5f, 495f), new Vector3(0.6f, 3.0f, 62f));
+        // Triple Boost Drag Runway (Z = 465 to 555, X = 0)
+        CreateRoadSlab(root, "FinalRunway", new Vector3(0f, -0.5f, 510f), new Vector3(20f, 2f, 95f));
+        CreateGuardRail(root, "Rail_Run_L", new Vector3(-10f, 1.5f, 510f), new Vector3(0.6f, 3.0f, 95f));
+        CreateGuardRail(root, "Rail_Run_R", new Vector3(10f, 1.5f, 510f), new Vector3(0.6f, 3.0f, 95f));
+        // Glowing end buffer barrier at Z = 555m so vehicle lands safely after crossing the finish line
+        CreateGuardRail(root, "Rail_Victory_Buffer", new Vector3(0f, 2.5f, 555f), new Vector3(20f, 5.0f, 1.2f));
 
         // Triple Sequential Boost Pads: 25 m/s -> 30 m/s -> 35 m/s!
         CreateBoostPad(root, new Vector3(0f, 0.52f, 472f), 26f);
@@ -659,8 +680,8 @@ public class TrackBuilder : MonoBehaviour
 
         BoxCollider goalBox = finishObj.AddComponent<BoxCollider>();
         goalBox.isTrigger = true;
-        goalBox.center = new Vector3(0f, 5f, 0f);
-        goalBox.size = new Vector3(20f, 10f, 4f);
+        goalBox.center = new Vector3(0f, 10f, 0f);
+        goalBox.size = new Vector3(32f, 20f, 12f);
         finishObj.AddComponent<GoalTrigger>();
 
         NeonRush.Checkpoint cp = finishObj.AddComponent<NeonRush.Checkpoint>();

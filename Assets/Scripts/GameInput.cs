@@ -2,8 +2,16 @@ using UnityEngine;
 
 public static class GameInput
 {
+    public static bool OverrideActive = false;
+    public static float OverrideHorizontal = 0f;
+    public static float OverrideVertical = 0f;
+    public static bool OverrideBrake = false;
+    public static bool OverrideDrift = false;
+    public static bool OverrideAntiGravity = false;
+
     public static float GetHorizontal()
     {
+        if (OverrideActive) return Mathf.Clamp(OverrideHorizontal, -1f, 1f);
         float h = Input.GetAxis("Horizontal");
         if (Mathf.Abs(h) < 0.05f)
         {
@@ -15,6 +23,7 @@ public static class GameInput
 
     public static float GetVertical()
     {
+        if (OverrideActive) return Mathf.Clamp(OverrideVertical, -1f, 1f);
         float v = Input.GetAxis("Vertical");
         if (Mathf.Abs(v) < 0.05f)
         {
@@ -41,6 +50,7 @@ public static class GameInput
 
     public static bool GetBrakeHeld()
     {
+        if (OverrideActive && OverrideBrake) return true;
         return Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
     }
 
@@ -51,11 +61,17 @@ public static class GameInput
 
     public static bool GetDrift()
     {
+        if (OverrideActive && OverrideDrift) return true;
         return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || Input.GetKey(KeyCode.LeftControl);
     }
 
     public static bool GetAntiGravityDown()
     {
+        if (OverrideActive && OverrideAntiGravity)
+        {
+            OverrideAntiGravity = false;
+            return true;
+        }
         return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.F);
     }
 

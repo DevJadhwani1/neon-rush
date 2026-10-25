@@ -53,6 +53,14 @@ namespace NeonRush
 
         void CheckIfStuckOrFlipped()
         {
+            // Do not check for stuck while countdown is running or game is not in active racing
+            if (GameManager.Instance != null && (!GameManager.Instance.isGameActive || GameManager.Instance.currentState != GameState.Racing))
+            {
+                stuckTimer = 0f;
+                lastPosition = transform.position;
+                return;
+            }
+
             // Check if flipped (upside down)
             float dotUp = Vector3.Dot(transform.up, Vector3.up);
             if (dotUp < -0.5f)
@@ -80,6 +88,23 @@ namespace NeonRush
             }
             
             lastPosition = transform.position;
+        }
+
+        public void RestoreHealth(int amount)
+        {
+            if (vehicleController != null)
+            {
+                vehicleController.RestoreHealth(amount);
+                currentArmor = vehicleController.health;
+            }
+            else
+            {
+                currentArmor = Mathf.Clamp(currentArmor + amount, 0, maxArmor);
+                if (GameUIManager.Instance != null)
+                {
+                    GameUIManager.Instance.UpdateHealth(currentArmor, maxArmor);
+                }
+            }
         }
 
         public void TakeDamage(int amount)

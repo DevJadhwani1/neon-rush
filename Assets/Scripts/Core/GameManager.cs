@@ -24,6 +24,16 @@ namespace NeonRush
     {
         public static GameManager Instance { get; private set; }
 
+        public static void EnsureInstance()
+        {
+            if (Instance == null)
+            {
+                GameObject gmObj = new GameObject("GameManager");
+                var gm = gmObj.AddComponent<GameManager>();
+                if (Instance == null) Instance = gm;
+            }
+        }
+
         [Header("Current State")]
         public GameState currentState = GameState.MainMenu;
         public GameState CurrentState => currentState;
@@ -31,6 +41,7 @@ namespace NeonRush
         [Header("Session Data")]
         public string selectedVehicleId = "VOLT"; // default to free vehicle
         public string selectedTrackId = "NEON_DOWNTOWN";
+        public string selectedTrack { get => selectedTrackId; set => selectedTrackId = value; }
         public string selectedMode = "GRAND_PRIX";
         
         [Header("Race State")]
@@ -149,6 +160,10 @@ namespace NeonRush
             if (currentState == GameState.Racing && isGameActive)
             {
                 raceTime += Time.deltaTime;
+                if (GameUIManager.Instance != null)
+                {
+                    GameUIManager.Instance.UpdateTimer(raceTime);
+                }
             }
 
             // Quick restart with R key during gameplay or post-race/game-over states
@@ -163,7 +178,11 @@ namespace NeonRush
 
         public void ChangeState(GameState newState)
         {
-            if (newState == currentState) return;
+            if (newState == currentState)
+            {
+                if (newState == GameState.Racing) isGameActive = true;
+                return;
+            }
             
             GameState oldState = currentState;
             currentState = newState;
@@ -274,6 +293,12 @@ namespace NeonRush
             ChangeState(GameState.GameOver);
             Debug.Log("[GameManager] Player eliminated -> Game Over!");
 
+            var rm = RaceManager.Instance != null ? RaceManager.Instance : FindAnyObjectByType<RaceManager>();
+            if (rm != null)
+            {
+                rm.SetGameOver();
+            }
+
             if (GameUIManager.Instance != null)
             {
                 GameUIManager.Instance.ShowGameOverScreen("PLAYER ELIMINATED");
@@ -288,6 +313,12 @@ namespace NeonRush
             ChangeState(GameState.GameOver);
             Debug.Log("[GameManager] Vehicle destroyed -> Game Over!");
 
+            var rm = RaceManager.Instance != null ? RaceManager.Instance : FindAnyObjectByType<RaceManager>();
+            if (rm != null)
+            {
+                rm.SetGameOver();
+            }
+
             if (GameUIManager.Instance != null)
             {
                 GameUIManager.Instance.ShowGameOverScreen("VEHICLE DESTROYED");
@@ -300,9 +331,11 @@ namespace NeonRush
             raceTime = 0f;
             isGameActive = false;
             hasWon = false;
+            currentState = GameState.Title;
             shardsCollected = 0;
             totalShards = 0;
             Time.timeScale = 1f;
+            ResultsScreenUI.ResetRewardSession();
         }
 
         void OnDestroy()

@@ -16,19 +16,36 @@ public class PlayerVisuals : MonoBehaviour
 
     void LoadMaterials()
     {
-        playerMat = Resources.Load<Material>("PlayerMaterial") ?? LoadMatFromPath("Assets/Materials/PlayerMaterial.mat");
-        metalMat = LoadMatFromPath("Assets/Materials/DarkMetalMaterial.mat");
-        goldVisorMat = LoadMatFromPath("Assets/Materials/GoldVisorMaterial.mat");
-        cyanGlowMat = LoadMatFromPath("Assets/Materials/NeonCyanGlow.mat");
+        playerMat = LoadMat("PlayerMaterial", new Color(0f, 0.7f, 0.9f), Color.black, 0.4f, 0.6f);
+        metalMat = LoadMat("DarkMetalMaterial", new Color(0.2f, 0.22f, 0.28f), Color.black, 0.8f, 0.7f);
+        goldVisorMat = LoadMat("GoldVisorMaterial", new Color(1f, 0.85f, 0.2f), new Color(1f, 0.85f, 0.2f) * 1.5f, 0.9f, 0.9f);
+        cyanGlowMat = LoadMat("NeonCyanGlow", new Color(0f, 0.95f, 1f), new Color(0f, 0.95f, 1f) * 2.5f);
     }
 
-    Material LoadMatFromPath(string path)
+    Material LoadMat(string matName, Color fallbackColor, Color fallbackEmission, float metallic = 0.5f, float smoothness = 0.5f)
     {
+        Material m = Resources.Load<Material>($"Materials/{matName}") ?? Resources.Load<Material>(matName);
 #if UNITY_EDITOR
-        return UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
-#else
-        return null;
+        if (m == null) m = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>($"Assets/Materials/{matName}.mat");
 #endif
+        if (m == null)
+        {
+            Shader s = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+            if (s != null)
+            {
+                m = new Material(s);
+                m.name = matName;
+                m.color = fallbackColor;
+                m.SetFloat("_Metallic", metallic);
+                m.SetFloat("_Glossiness", smoothness);
+                if (fallbackEmission.maxColorComponent > 0.01f)
+                {
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", fallbackEmission);
+                }
+            }
+        }
+        return m;
     }
 
     void SafeDestroy(Object obj)
@@ -113,6 +130,21 @@ public class PlayerVisuals : MonoBehaviour
         CreateLimb(visualRoot, "Arm_R", new Vector3(0.42f, 0.92f, 0f), new Vector3(0.18f, 0.58f, 0.18f), playerMat);
         CreateLimb(visualRoot, "Leg_L", new Vector3(-0.18f, 0.35f, 0f), new Vector3(0.22f, 0.68f, 0.22f), metalMat);
         CreateLimb(visualRoot, "Leg_R", new Vector3(0.18f, 0.35f, 0f), new Vector3(0.22f, 0.68f, 0.22f), metalMat);
+
+        VehicleInteraction vi = FindAnyObjectByType<VehicleInteraction>();
+        if (vi != null && vi.isInVehicle)
+        {
+            Renderer[] allRenderers = visualRoot.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in allRenderers)
+            {
+                if (r != null) r.enabled = false;
+            }
+            Light[] allLights = visualRoot.GetComponentsInChildren<Light>(true);
+            foreach (var l in allLights)
+            {
+                if (l != null) l.enabled = false;
+            }
+        }
     }
 
     void CreateJetNozzle(Transform parent, Vector3 localPos)

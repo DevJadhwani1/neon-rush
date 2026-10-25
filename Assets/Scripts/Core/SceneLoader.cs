@@ -49,7 +49,7 @@ namespace NeonRush
             "Visit the Garage from the Main Menu to upgrade Engine Speed, Handling, Boost, and Armor.",
             "Draft directly in an opponent's wake to activate Slipstream acceleration and slingshot past.",
             "Press [R] at any point during a race to trigger a rapid track restart.",
-            "Sequential checkpoints validate your lap times — out-of-order passage is strictly rejected!"
+            "Sequential checkpoints validate your run progression — out-of-order passage is strictly rejected!"
         };
 
         public static float NormalizeProgress(float rawOpProgress)
@@ -167,35 +167,105 @@ namespace NeonRush
             yield return new WaitForSecondsRealtime(0.15f);
 
             AsyncOperation op = null;
+            // 1. Try loading by scene name
             try
             {
-                if (isRaceScene)
-                {
-                    op = SceneManager.LoadSceneAsync(1);
-                }
-                else
+                if (Application.CanStreamedLevelBeLoaded(sceneName))
                 {
                     op = SceneManager.LoadSceneAsync(sceneName);
                 }
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[SceneLoader] LoadSceneAsync error: {ex.Message}");
+                Debug.LogWarning($"[SceneLoader] LoadSceneAsync by name '{sceneName}' exception: {ex.Message}");
             }
 
+            // 2. Try loading by build index
             if (op == null)
             {
-                Debug.LogWarning($"[SceneLoader] Failed async load for '{sceneName}'. Attempting direct fallback.");
+                int buildIndex = SceneUtility.GetBuildIndexByScenePath(sceneName);
+                if (buildIndex < 0)
+                {
+                    buildIndex = SceneUtility.GetBuildIndexByScenePath($"Assets/Scenes/{sceneName}.unity");
+                }
+
+                if (buildIndex >= 0)
+                {
+                    try
+                    {
+                        op = SceneManager.LoadSceneAsync(buildIndex);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[SceneLoader] LoadSceneAsync by index {buildIndex} exception: {ex.Message}");
+                    }
+                }
+                else if (isRaceScene && SceneManager.sceneCountInBuildSettings > 1)
+                {
+                    try
+                    {
+                        op = SceneManager.LoadSceneAsync(1);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[SceneLoader] LoadSceneAsync index 1 exception: {ex.Message}");
+                    }
+                }
+            }
+
+#if UNITY_EDITOR
+            // 3. In Editor Play Mode, try direct scene asset path load
+            if (op == null)
+            {
+                string fullPath = $"Assets/Scenes/{sceneName}.unity";
+                if (System.IO.File.Exists(fullPath))
+                {
+                    Debug.Log($"[SceneLoader] Attempting EditorSceneManager.LoadSceneAsyncInPlayMode for '{fullPath}'");
+                    try
+                    {
+                        op = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(fullPath, new LoadSceneParameters(LoadSceneMode.Single));
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogError($"[SceneLoader] EditorSceneManager.LoadSceneAsyncInPlayMode error: {ex.Message}");
+                    }
+                }
+            }
+#endif
+
+            // 4. Fallback if op is still null
+            if (op == null)
+            {
+                Debug.LogError($"[SceneLoader] Failed async load for '{sceneName}' (BuildSettings scene count: {SceneManager.sceneCountInBuildSettings}). Attempting direct synchronous fallback.");
                 try
                 {
-                    SceneManager.LoadScene(isRaceScene ? 1 : 0);
+                    if (Application.CanStreamedLevelBeLoaded(sceneName))
+                    {
+                        SceneManager.LoadScene(sceneName);
+                        isLoading = false;
+                        yield break;
+                    }
+                    else if (isRaceScene && SceneManager.sceneCountInBuildSettings > 1)
+                    {
+                        SceneManager.LoadScene(1);
+                        isLoading = false;
+                        yield break;
+                    }
+                    else
+                    {
+                        throw new System.Exception($"Scene '{sceneName}' not found in Build Settings.");
+                    }
                 }
                 catch (System.Exception ex2)
                 {
-                    Debug.LogError($"[SceneLoader] Fallback load also failed: {ex2.Message}");
+                    Debug.LogError($"[SceneLoader] Direct fallback also failed: {ex2.Message}");
+                    if (GameManager.Instance != null)
+                    {
+                        GameManager.Instance.ChangeState(GameState.MainMenu);
+                    }
+                    isLoading = false;
+                    yield break;
                 }
-                isLoading = false;
-                yield break;
             }
 
             // Keep scene from activating automatically until smooth progress completes

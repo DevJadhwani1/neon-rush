@@ -10,7 +10,7 @@ public class PlayerController : MonoBehaviour
     [Header("Health Settings (Assignment Required)")]
     public int health;
     public int maxHealth = 100;
-    public int damageAmount = 25;
+    public int damageAmount = 5;
 
     // Component References
     private Rigidbody rb;

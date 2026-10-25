@@ -6,17 +6,26 @@ public class PlayerHealth : MonoBehaviour
     [Header("Assignment Required Health System")]
     public int health;
     public int maxHealth = 100;
-    public int damageAmount = 25;
+    public int damageAmount = 5;
+    public int policeDamageAmount = 20;
 
     [Header("Invulnerability & Damage Cooldown")]
     public float invulnerabilityDuration = 1.0f;
     private float invulnerabilityTimer = 0f;
     private bool isDead = false;
 
+    void Awake()
+    {
+        damageAmount = 5;
+        policeDamageAmount = 20;
+    }
+
     void Start()
     {
         // Assignment Requirement: Initialize health in Start()
         health = 100;
+        damageAmount = 5;
+        policeDamageAmount = 20;
         isDead = false;
         invulnerabilityTimer = 0f;
         Debug.Log("PlayerHealth initialized in Start(): health = " + health);
@@ -40,6 +49,24 @@ public class PlayerHealth : MonoBehaviour
     {
         if (isDead || invulnerabilityTimer > 0f) return;
 
+        // Ignore ground and road surfaces
+        string colName = collision.gameObject.name.ToLower();
+        if (colName.Contains("road") || colName.Contains("floor") || colName.Contains("slab") ||
+            colName.Contains("track") || colName.Contains("ground") || colName.Contains("terrain") ||
+            colName.Contains("runway") || colName.Contains("grid") || colName.Contains("surface"))
+        {
+            return;
+        }
+
+        if (collision.contactCount > 0)
+        {
+            ContactPoint contact = collision.GetContact(0);
+            if (contact.normal.y > 0.55f)
+            {
+                return; // Horizontal ground landing
+            }
+        }
+
         // Safe check for damaging objects
         bool isHazard = false;
         try
@@ -51,9 +78,17 @@ public class PlayerHealth : MonoBehaviour
             isHazard = false;
         }
 
-        if (!isHazard)
+        bool isPolice = false;
+        try
         {
-            isHazard = collision.gameObject.name.Contains("Hazard") || collision.gameObject.name.Contains("Police") || collision.gameObject.name.Contains("Enemy");
+            isPolice = collision.gameObject.CompareTag("Enemy") || collision.gameObject.name.Contains("Police") || collision.gameObject.name.Contains("Enemy");
+        }
+        catch { }
+
+        if (isPolice)
+        {
+            TakeDamage(policeDamageAmount);
+            return;
         }
 
         if (isHazard)

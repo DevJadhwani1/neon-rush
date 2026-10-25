@@ -7,14 +7,14 @@ public class SimpleCameraFollow : MonoBehaviour
     public bool isVehicleCamera = false;
 
     [Header("Follow Settings")]
-    public float distance = 6.5f; // Increased slightly from 6.0
-    public float height = 2.5f; // Raised from 2.2 for better view
-    public float positionDamping = 10.0f; // Smoother from 8.0
-    public float rotationDamping = 12.0f; // Smoother from 8.0
+    public float distance = 6.8f;
+    public float height = 2.8f;
+    public float positionDamping = 10.0f;
+    public float rotationDamping = 12.0f;
 
     [Header("Look-At Settings")]
-    public float lookAheadDistance = 6.0f;
-    public float lookUpOffset = 1.0f;
+    public float lookAheadDistance = 14.0f;
+    public float lookUpOffset = 0.5f;
 
     [Header("Environment Collision")]
     public bool preventWallClipping = true;
@@ -23,8 +23,8 @@ public class SimpleCameraFollow : MonoBehaviour
 
     [Header("Speed Dynamics")]
     public bool dynamicFOV = true;
-    public float baseFOV = 65f; // Increased from 62
-    public float maxFOV = 78f; // Increased from 72 for more speed sensation
+    public float baseFOV = 65f;
+    public float maxFOV = 78f;
 
     private Camera cam;
     private Rigidbody targetRb;
@@ -69,10 +69,10 @@ public class SimpleCameraFollow : MonoBehaviour
             if (isVehicleCamera || (vehicleCtrl != null))
             {
                 isVehicleCamera = true;
-                distance = 6.0f;
-                height = 2.2f;
-                lookAheadDistance = 6.0f;
-                lookUpOffset = 1.0f;
+                distance = 6.8f;
+                height = 2.8f;
+                lookAheadDistance = 14.0f;
+                lookUpOffset = 0.5f;
             }
             else
             {
@@ -145,7 +145,7 @@ public class SimpleCameraFollow : MonoBehaviour
 
             if (Physics.Raycast(rayOrigin, rayDir.normalized, out hit, maxRayDist, collisionLayers, QueryTriggerInteraction.Ignore))
             {
-                if (!hit.transform.IsChildOf(target) && hit.transform != target)
+                if (!hit.transform.IsChildOf(target) && hit.transform != target && !hit.transform.root.name.Contains("Vehicle"))
                 {
                     float clampedDist = Mathf.Max(hit.distance - 0.4f, minDistance);
                     desiredPosition = rayOrigin + rayDir.normalized * clampedDist;

@@ -239,7 +239,67 @@ public static class TestMenu
     [MenuItem("AntiGravity/Run Suite")]
     public static void RunSuite()
     {
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
         NeonRush.Tests.AutomatedTestRunner.RunAllTests();
+    }
+
+    [MenuItem("AntiGravity/Start Race Flow")]
+    public static void SimulateStartRaceFlow()
+    {
+        var menu = Object.FindAnyObjectByType<NeonRush.MainMenuUI>();
+        if (menu != null)
+        {
+            var prop = typeof(NeonRush.MainMenuUI).GetField("currentState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (prop != null)
+            {
+                prop.SetValue(menu, System.Enum.Parse(prop.FieldType, "TrackSelect"));
+            }
+        }
+        NeonRush.GameManager.EnsureInstance();
+        if (NeonRush.GameManager.Instance != null)
+        {
+            NeonRush.GameManager.Instance.selectedTrackId = "NEON_DOWNTOWN";
+            NeonRush.GameManager.Instance.selectedMode = "GRAND_PRIX";
+        }
+        Debug.Log("[TestMenu] Invoking SceneLoader.LoadRace()...");
+        NeonRush.SceneLoader.LoadRace();
+    }
+
+    [MenuItem("AntiGravity/Disable Game View Gizmos")]
+    public static void DisableGameViewGizmos()
+    {
+        try
+        {
+            var gameViewType = System.Type.GetType("UnityEditor.GameView,UnityEditor") ??
+                               System.Type.GetType("UnityEditor.PlayModeView,UnityEditor");
+            if (gameViewType != null)
+            {
+                var views = Resources.FindObjectsOfTypeAll(gameViewType);
+                foreach (var v in views)
+                {
+                    var prop = gameViewType.GetProperty("gizmos", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (prop != null && prop.CanWrite)
+                    {
+                        prop.SetValue(v, false, null);
+                    }
+                }
+            }
+            var annotType = System.Type.GetType("UnityEditor.AnnotationUtility,UnityEditor");
+            if (annotType != null)
+            {
+                var setIcon = annotType.GetMethod("SetIconEnabled", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                if (setIcon != null)
+                {
+                    setIcon.Invoke(null, new object[] { 108, "", 0 }); // Light classID = 108
+                }
+                var setGizmo = annotType.GetMethod("SetGizmoEnabled", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                if (setGizmo != null)
+                {
+                    setGizmo.Invoke(null, new object[] { 108, "", 0 });
+                }
+            }
+        }
+        catch { }
     }
 }
 #endif

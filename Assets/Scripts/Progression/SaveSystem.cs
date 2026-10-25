@@ -100,6 +100,7 @@ namespace NeonRush
         {
             cachedData = new SaveData();
             Save(cachedData);
+            ResultsScreenUI.ResetRewardSession();
             Debug.Log("Save data reset to default.");
         }
 

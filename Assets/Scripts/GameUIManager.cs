@@ -269,20 +269,18 @@ public class GameUIManager : MonoBehaviour
         GUI.Label(new Rect(margin + 16, margin + 6, 95, 60), spd.ToString(), hudSpeedValStyle);
         GUI.Label(new Rect(margin + 115, margin + 26, 60, 25), "KM/H", hudSpeedUnitStyle);
 
-        // --- TOP CENTER: Position & Lap Card ---
+        // --- TOP CENTER: Position & Run Progression Card ---
         RaceManager rm = FindAnyObjectByType<RaceManager>();
         if (rm != null)
         {
             int position = rm.GetPlayerPosition();
             int totalRacers = 4;
-            int currentLap = rm.GetPlayerLap();
-            int totalLaps = rm.TotalLaps;
 
             Rect centerCard = new Rect(Screen.width * 0.5f - 130, margin, 260, 75);
             GUI.DrawTexture(centerCard, hudCardBgTex);
 
             GUI.Label(new Rect(centerCard.x, centerCard.y + 4, centerCard.width, 42), $"POS {position} / {totalRacers}", hudPosStyle);
-            GUI.Label(new Rect(centerCard.x, centerCard.y + 44, centerCard.width, 26), $"LAP {currentLap} / {totalLaps}", hudLapStyle);
+            GUI.Label(new Rect(centerCard.x, centerCard.y + 44, centerCard.width, 26), "CIRCUIT RUN", hudLapStyle);
         }
 
         // --- TOP RIGHT: Race Timer Card ---

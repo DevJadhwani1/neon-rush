@@ -69,11 +69,9 @@ namespace NeonRush
                 positionText.text = $"{position}";
             }
 
-            // Update lap
-            int currentLap = raceManager.GetPlayerLap();
             if (lapText != null)
             {
-                lapText.text = $"LAP {currentLap}/{raceManager.TotalLaps}";
+                lapText.text = "";
             }
 
             // Update lap time
@@ -150,13 +148,12 @@ namespace NeonRush
         {
             if (lapText != null)
             {
-                lapText.text = $"LAP {currentLap}/{totalLaps}";
+                lapText.text = "";
             }
             
             if (lapTimeText != null)
             {
-                string bestText = bestLap > 0f ? $" | BEST {FormatTime(bestLap)}" : "";
-                lapTimeText.text = $"{FormatTime(lapTime)}{bestText}";
+                lapTimeText.text = FormatTime(lapTime);
             }
         }
         

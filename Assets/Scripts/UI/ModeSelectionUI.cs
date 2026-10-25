@@ -8,7 +8,7 @@ namespace NeonRush
     {
         private string[] modeNames = { "TIME TRIAL", "GRAND PRIX", "POLICE CHASE" };
         private string[] modeDescriptions = {
-            "Complete 3 laps as fast as possible!",
+            "Complete the sprint course as fast as possible!",
             "Race against 3 AI opponents!",
             "Survive 5 minutes of police pursuit!"
         };

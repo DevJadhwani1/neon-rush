@@ -192,38 +192,52 @@ public class PoliceVehicle : MonoBehaviour
             if (Time.time - lastRamTime > 1.2f)
             {
                 lastRamTime = Time.time;
-                Rigidbody targetRb = col.gameObject.GetComponent<Rigidbody>();
-                if (targetRb != null)
-                {
-                    // Apply controlled horizontal push rather than vertical launcher
-                    Vector3 forwardPush = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-                    targetRb.AddForce(forwardPush * 4.5f, ForceMode.Impulse);
-                }
+                VehicleController vc = col.gameObject.GetComponent<VehicleController>() ?? col.gameObject.GetComponentInParent<VehicleController>();
 
-                VehicleController vc = col.gameObject.GetComponent<VehicleController>();
-                if (vc != null && !vc.isAntiGravityActive)
+                // Do not ram or push player if invulnerable, recovering, or destroyed
+                if (vc != null)
                 {
-                    vc.TakeDamage(20);
-                }
+                    if (vc.isDestroyed) return;
 
-                if (GameUIManager.Instance != null)
+                    // Only apply horizontal push if player is not invulnerable/recovering
+                    Rigidbody targetRb = col.gameObject.GetComponent<Rigidbody>() ?? vc.GetComponent<Rigidbody>();
+                    if (targetRb != null && !vc.isAntiGravityActive)
+                    {
+                        Vector3 forwardPush = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+                        targetRb.AddForce(forwardPush * 3.5f, ForceMode.Impulse);
+                    }
+
+                    if (!vc.isAntiGravityActive)
+                    {
+                        vc.TakeDamage(20);
+                    }
+
+                    if (GameUIManager.Instance != null)
+                    {
+                        GameUIManager.Instance.ShowNotification("🚨 POLICE INTERCEPTOR RAMMED YOU!", 2.0f);
+                    }
+
+                    Debug.Log("Police interceptor rammed player!");
+                }
+                else
                 {
-                    GameUIManager.Instance.ShowNotification("🚨 POLICE INTERCEPTOR RAMMED YOU!", 2.0f);
+                    PlayerHealth ph = col.gameObject.GetComponent<PlayerHealth>() ?? col.gameObject.GetComponentInParent<PlayerHealth>();
+                    if (ph != null)
+                    {
+                        ph.TakeDamage(20);
+                        if (GameUIManager.Instance != null)
+                        {
+                            GameUIManager.Instance.ShowNotification("🚨 POLICE INTERCEPTOR RAMMED YOU!", 2.0f);
+                        }
+                    }
                 }
-
-                Debug.Log("Police interceptor rammed player!");
             }
         }
     }
 
     public void RespawnOnTrack()
     {
-        if (playerTarget != null && playerTarget.position.z > 300f)
-        {
-            transform.position = new Vector3(0f, 1.5f, 350f);
-            transform.rotation = Quaternion.identity;
-        }
-        else if (playerTarget != null && playerTarget.position.z > 50f)
+        if (playerTarget != null)
         {
             RespawnBehindPlayer();
         }
@@ -231,29 +245,44 @@ public class PoliceVehicle : MonoBehaviour
         {
             transform.position = new Vector3(0f, 1.5f, 65f);
             transform.rotation = Quaternion.Euler(0f, 30f, 0f);
-        }
-
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
     }
 
     void RespawnBehindPlayer()
     {
-        Vector3 spawnPos = playerTarget.position - playerTarget.forward * 22f + Vector3.up * 1.5f;
-        spawnPos.x = Mathf.Clamp(spawnPos.x, -10f, 10f);
-        transform.position = spawnPos;
-        transform.rotation = playerTarget.rotation;
+        if (playerTarget == null) return;
+
+        // Position 20m behind player along their heading
+        Vector3 candidatePos = playerTarget.position - playerTarget.forward * 20f + Vector3.up * 4f;
+
+        // Check if there is a drivable road surface underneath candidatePos
+        RaycastHit hit;
+        if (Physics.Raycast(candidatePos, Vector3.down, out hit, 25f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            transform.position = hit.point + Vector3.up * 0.8f;
+            transform.rotation = playerTarget.rotation;
+        }
+        else
+        {
+            // If over a gap, spawn at last safe checkpoint coordinates behind player
+            float safeZ = Mathf.Max(0f, playerTarget.position.z - 25f);
+            float safeY = (safeZ >= 210f && safeZ <= 290f) ? 11.5f : 1.5f;
+            transform.position = new Vector3(0f, safeY, safeZ);
+            transform.rotation = Quaternion.identity;
+        }
 
         if (rb != null)
         {
-            rb.linearVelocity = playerTarget.forward * 16f;
+            rb.linearVelocity = playerTarget.forward * 14f;
             rb.angularVelocity = Vector3.zero;
         }
 
-        Debug.Log("Police Interceptor re-engaged behind player at " + spawnPos);
+        Debug.Log("Police Interceptor safely re-engaged behind player at " + transform.position);
     }
 
     // === NEON RUSH: PowerUp System & Combat ===

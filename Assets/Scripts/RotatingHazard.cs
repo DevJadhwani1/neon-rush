@@ -3,7 +3,7 @@ using UnityEngine;
 public class RotatingHazard : MonoBehaviour
 {
     public float rotationSpeed = 65f;
-    public int damageAmount = 25;
+    public int damageAmount = 5;
 
     void Update()
     {

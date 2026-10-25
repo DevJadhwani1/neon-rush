@@ -159,4 +159,4 @@ MonoBehaviour:
   rotationSpeed: 14
   health: 0
   maxHealth: 100
-  damageAmount: 20
+  damageAmount: 5

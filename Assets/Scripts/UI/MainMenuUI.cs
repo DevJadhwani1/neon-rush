@@ -131,6 +131,34 @@ namespace NeonRush
             Debug.Log("[NeonRush] Startup: Advanced to Main Menu");
         }
 
+        public void DemoAdvanceToTitle() => AdvanceToTitle();
+        public void DemoAdvanceToMain() => AdvanceToMain();
+        public void DemoOpenGarage()
+        {
+            var garageUI = FindAnyObjectByType<GarageUI>();
+            if (garageUI != null)
+            {
+                garageUI.enabled = true;
+                enabled = false;
+            }
+            else
+            {
+                gameObject.AddComponent<GarageUI>();
+                enabled = false;
+            }
+        }
+        public void DemoOpenTrackSelect() { currentState = MenuState.TrackSelect; }
+        public void DemoStartRace()
+        {
+            GameManager.EnsureInstance();
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.selectedTrackId = trackIds[selectedTrackIndex];
+                GameManager.Instance.selectedMode = "GRAND_PRIX";
+            }
+            SceneLoader.LoadRace();
+        }
+
         void EnsureEventSystem()
         {
             if (UnityEngine.EventSystems.EventSystem.current == null)
@@ -144,6 +172,11 @@ namespace NeonRush
 
         void OnGUI()
         {
+            if (SceneLoader.Instance != null && SceneLoader.Instance.IsLoading)
+            {
+                return;
+            }
+
             GUI.depth = 0;
             EnsureTextures();
             InitStyles();
@@ -402,6 +435,7 @@ namespace NeonRush
             {
                 if (GUI.Button(new Rect(actionBtnX, centerY + 160, actionBtnW, actionBtnH), "START RACE", menuButtonStyle))
                 {
+                    GameManager.EnsureInstance();
                     if (GameManager.Instance != null)
                     {
                         GameManager.Instance.selectedTrackId = trackIds[selectedTrackIndex];

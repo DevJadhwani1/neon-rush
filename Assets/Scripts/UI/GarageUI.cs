@@ -260,5 +260,30 @@ namespace NeonRush
                 SceneLoader.LoadMainMenu();
             }
         }
+
+        public void DemoSelectNextVehicle()
+        {
+            selectedVehicleIndex = (selectedVehicleIndex + 1) % vehicleIds.Length;
+        }
+
+        public void DemoPurchaseUpgrade(UpgradeType type)
+        {
+            UpgradeSystem.PurchaseUpgrade(vehicleIds[selectedVehicleIndex], type);
+            saveData = SaveSystem.Load();
+        }
+
+        public void DemoCloseGarage()
+        {
+            var menu = FindAnyObjectByType<MainMenuUI>();
+            if (menu != null)
+            {
+                menu.enabled = true;
+                enabled = false;
+            }
+            else
+            {
+                SceneLoader.LoadMainMenu();
+            }
+        }
     }
 }
